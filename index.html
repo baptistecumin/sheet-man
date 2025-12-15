@@ -250,7 +250,7 @@
             <path d="M259.891 249.609C167.663 278.785 119.681 228.948 124.306 134.828C126.734 111.779 143.355 104.998 165.763 104.744C217.019 104.089 277.821 104.681 328.423 104.491C433.195 99.0821 526.274 144 528.323 250.962C529.217 297.629 511.822 341.869 482.741 376.813C465.487 397.77 468.908 417.503 481.559 438.989C494.821 463.179 517.018 493.791 528.274 518.446C540.418 543.206 528.401 549.903 500.904 551.594C473.047 552.988 438.18 552.946 409.859 551.678C387.916 550.896 370.007 543.164 363.101 521.594C353.492 496.199 346.079 464.615 327.684 442.749C313.851 424.348 281.982 408.545 266.121 430.538C241.602 462.946 298.898 527.065 265.657 546.227C242.806 555.481 182.785 555.143 162.257 544.495C137.484 530.467 144.981 488.678 143.566 463.812C144.284 430.622 141.919 396.714 149.311 364.073C180.863 215.933 379.574 374.447 415.329 268.729C418.729 246.715 398.729 229.771 378.581 225.652C337.356 216.462 299.574 238.666 259.976 249.588L259.891 249.609Z" fill="#2563eb"/>
         </svg>
         <h1 class="title">Sheet-Man</h1>
-        <p class="tagline">Clean the data. Avoid the spreadsheets.</p>
+        <p class="tagline">Stop product spreadsheet madness.</p>
         <button class="btn" onclick="startGame()">Play</button>
         <div class="card">
             <div class="card-title">Top Scores</div>
@@ -334,12 +334,12 @@
         let baseScore = 0, timeBonus = 0, finalScore = 0;
         const MAX_TIME = 120;
 
-        // File type enemies
+        // Spreadsheet enemies - all variations of spreadsheets
         const ENEMIES = [
-            { type: 'xls', label: '.xls', bg: '#217346', speed: 3 },
-            { type: 'pdf', label: '.pdf', bg: '#ff0000', speed: 2 },
+            { type: 'xls', label: '.xlsx', bg: '#217346', speed: 3 },
+            { type: 'xls', label: '.xls', bg: '#1f6e43', speed: 2 },
             { type: 'csv', label: '.csv', bg: '#64748b', speed: 1 },
-            { type: 'zip', label: '.zip', bg: '#f59e0b', speed: 2 },
+            { type: 'xls', label: '.gsheet', bg: '#0f9d58', speed: 2 },
         ];
 
         // Leaderboard
@@ -413,8 +413,9 @@
         function init() {
             canvas = document.getElementById('canvas');
             ctx = canvas.getContext('2d');
-            const maxW = Math.min(window.innerWidth - 32, 380);
-            const maxH = window.innerHeight - 100;
+            // Make game as big as possible
+            const maxW = window.innerWidth - 24;
+            const maxH = window.innerHeight - 80;
             const scale = Math.min(maxW / (COLS * CELL), maxH / (ROWS * CELL));
             canvas.width = COLS * CELL;
             canvas.height = ROWS * CELL;
@@ -697,8 +698,8 @@
             // Player - Rastro logo with munching animation
             const px = player.x * CELL + CELL/2;
             const py = player.y * CELL + CELL/2;
-            const size = CELL - 2;
-            const munch = Math.sin(player.munch * 0.8) * 0.15; // Squish animation
+            const size = CELL;
+            const munch = Math.sin(player.munch * 0.8) * 0.12; // Squish animation
 
             ctx.save();
             ctx.translate(px, py);
@@ -712,85 +713,112 @@
             const scaleY = 1 - munch * 0.5;
             ctx.scale(scaleX, scaleY);
 
-            // Draw simplified Rastro "R" logo
+            // Draw actual Rastro logo using the SVG path
             ctx.fillStyle = powered ? '#22c55e' : '#3b82f6';
             ctx.shadowColor = powered ? '#22c55e' : '#3b82f6';
-            ctx.shadowBlur = 6;
+            ctx.shadowBlur = 8;
 
-            // Simple R shape
-            const s = size * 0.5;
+            // Scale the logo path to fit in cell (original viewBox is 656x656)
+            const logoScale = size / 656;
+            ctx.scale(logoScale, logoScale);
+            ctx.translate(-328, -328); // Center the logo
+
+            // Rastro R logo path
             ctx.beginPath();
-            ctx.moveTo(-s*0.4, -s*0.5);
-            ctx.lineTo(-s*0.4, s*0.5);
-            ctx.lineTo(-s*0.1, s*0.5);
-            ctx.lineTo(-s*0.1, s*0.1);
-            ctx.lineTo(s*0.2, s*0.5);
-            ctx.lineTo(s*0.5, s*0.5);
-            ctx.lineTo(s*0.1, 0);
-            ctx.quadraticCurveTo(s*0.5, -s*0.1, s*0.4, -s*0.35);
-            ctx.quadraticCurveTo(s*0.3, -s*0.55, -s*0.1, -s*0.5);
+            ctx.moveTo(259.891, 249.609);
+            ctx.bezierCurveTo(167.663, 278.785, 119.681, 228.948, 124.306, 134.828);
+            ctx.bezierCurveTo(126.734, 111.779, 143.355, 104.998, 165.763, 104.744);
+            ctx.bezierCurveTo(217.019, 104.089, 277.821, 104.681, 328.423, 104.491);
+            ctx.bezierCurveTo(433.195, 99.0821, 526.274, 144, 528.323, 250.962);
+            ctx.bezierCurveTo(529.217, 297.629, 511.822, 341.869, 482.741, 376.813);
+            ctx.bezierCurveTo(465.487, 397.77, 468.908, 417.503, 481.559, 438.989);
+            ctx.bezierCurveTo(494.821, 463.179, 517.018, 493.791, 528.274, 518.446);
+            ctx.bezierCurveTo(540.418, 543.206, 528.401, 549.903, 500.904, 551.594);
+            ctx.bezierCurveTo(473.047, 552.988, 438.18, 552.946, 409.859, 551.678);
+            ctx.bezierCurveTo(387.916, 550.896, 370.007, 543.164, 363.101, 521.594);
+            ctx.bezierCurveTo(353.492, 496.199, 346.079, 464.615, 327.684, 442.749);
+            ctx.bezierCurveTo(313.851, 424.348, 281.982, 408.545, 266.121, 430.538);
+            ctx.bezierCurveTo(241.602, 462.946, 298.898, 527.065, 265.657, 546.227);
+            ctx.bezierCurveTo(242.806, 555.481, 182.785, 555.143, 162.257, 544.495);
+            ctx.bezierCurveTo(137.484, 530.467, 144.981, 488.678, 143.566, 463.812);
+            ctx.bezierCurveTo(144.284, 430.622, 141.919, 396.714, 149.311, 364.073);
+            ctx.bezierCurveTo(180.863, 215.933, 379.574, 374.447, 415.329, 268.729);
+            ctx.bezierCurveTo(418.729, 246.715, 398.729, 229.771, 378.581, 225.652);
+            ctx.bezierCurveTo(337.356, 216.462, 299.574, 238.666, 259.976, 249.588);
             ctx.closePath();
             ctx.fill();
 
             ctx.restore();
             ctx.shadowBlur = 0;
 
-            // Enemies - File icons
+            // Enemies - Spreadsheet icons
             enemies.forEach(e => {
-                const ex = e.x * CELL;
-                const ey = e.y * CELL;
-                const w = CELL - 2;
-                const h = CELL - 2;
+                const ex = e.x * CELL + CELL/2;
+                const ey = e.y * CELL + CELL/2;
 
                 if (e.eaten) {
                     // Just a faded outline when eaten
-                    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+                    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
                     ctx.lineWidth = 1;
-                    ctx.strokeRect(ex + 2, ey + 2, w - 2, h - 2);
+                    ctx.strokeRect(ex - CELL/2 + 2, ey - CELL/2 + 2, CELL - 4, CELL - 4);
                     return;
                 }
 
-                const wobble = Math.sin(Date.now() / 150 + e.wobble) * 1;
+                const wobble = Math.sin(Date.now() / 150 + e.wobble) * 1.5;
 
                 ctx.save();
-                ctx.translate(ex + CELL/2, ey + CELL/2 + wobble);
+                ctx.translate(ex, ey + wobble);
 
-                // File icon shape
-                const fw = w * 0.8;
-                const fh = h * 0.9;
-                const fold = fw * 0.25;
+                // Spreadsheet dimensions - almost fill the cell
+                const sw = CELL - 2;
+                const sh = CELL - 2;
 
-                ctx.fillStyle = e.scared ? '#1e40af' : '#fff';
+                // Shadow/glow
                 ctx.shadowColor = e.scared ? '#3b82f6' : e.bg;
-                ctx.shadowBlur = 4;
+                ctx.shadowBlur = 6;
 
-                // Main file body
+                // Main spreadsheet body (white or blue when scared)
+                ctx.fillStyle = e.scared ? '#1e40af' : '#fff';
                 ctx.beginPath();
-                ctx.moveTo(-fw/2, -fh/2);
-                ctx.lineTo(fw/2 - fold, -fh/2);
-                ctx.lineTo(fw/2, -fh/2 + fold);
-                ctx.lineTo(fw/2, fh/2);
-                ctx.lineTo(-fw/2, fh/2);
-                ctx.closePath();
-                ctx.fill();
-
-                // Corner fold
-                ctx.fillStyle = e.scared ? '#1e3a8a' : '#e2e8f0';
-                ctx.beginPath();
-                ctx.moveTo(fw/2 - fold, -fh/2);
-                ctx.lineTo(fw/2 - fold, -fh/2 + fold);
-                ctx.lineTo(fw/2, -fh/2 + fold);
-                ctx.closePath();
+                ctx.roundRect(-sw/2, -sh/2, sw, sh, 2);
                 ctx.fill();
 
                 ctx.shadowBlur = 0;
 
-                // File extension label
+                // Header row (colored)
                 ctx.fillStyle = e.scared ? '#60a5fa' : e.bg;
-                ctx.font = `bold ${Math.floor(CELL * 0.35)}px Inter, sans-serif`;
+                ctx.beginPath();
+                ctx.roundRect(-sw/2, -sh/2, sw, sh * 0.25, [2, 2, 0, 0]);
+                ctx.fill();
+
+                // Grid lines
+                ctx.strokeStyle = e.scared ? 'rgba(96,165,250,0.4)' : 'rgba(0,0,0,0.15)';
+                ctx.lineWidth = 0.5;
+
+                // Horizontal lines (3 rows)
+                for (let i = 1; i <= 3; i++) {
+                    const y = -sh/2 + (sh * i / 4);
+                    ctx.beginPath();
+                    ctx.moveTo(-sw/2, y);
+                    ctx.lineTo(sw/2, y);
+                    ctx.stroke();
+                }
+
+                // Vertical lines (2 columns)
+                for (let i = 1; i <= 2; i++) {
+                    const x = -sw/2 + (sw * i / 3);
+                    ctx.beginPath();
+                    ctx.moveTo(x, -sh/2 + sh * 0.25);
+                    ctx.lineTo(x, sh/2);
+                    ctx.stroke();
+                }
+
+                // Extension label in header
+                ctx.fillStyle = '#fff';
+                ctx.font = `bold ${Math.floor(CELL * 0.28)}px Inter, sans-serif`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillText(e.label, 0, fh * 0.15);
+                ctx.fillText(e.label, 0, -sh/2 + sh * 0.125);
 
                 ctx.restore();
             });
