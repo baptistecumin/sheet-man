@@ -132,6 +132,7 @@
             display: flex;
             flex-direction: column;
             background: #0f172a;
+            overflow: hidden;
         }
         .game-hud {
             display: flex;
@@ -198,6 +199,39 @@
         .tz-down { grid-area: 3 / 2; }
         .tz-left { grid-area: 2 / 1; }
         .tz-right { grid-area: 2 / 3; }
+
+        /* Mobile arrow keys */
+        .mobile-controls {
+            display: none;
+            margin-top: 12px;
+        }
+        @media (max-width: 768px) {
+            .mobile-controls { display: block; }
+        }
+        .arrow-pad {
+            display: grid;
+            grid-template: repeat(3, 44px) / repeat(3, 44px);
+            gap: 4px;
+            justify-content: center;
+        }
+        .arrow-btn {
+            background: rgba(59, 130, 246, 0.2);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 8px;
+            color: #60a5fa;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .arrow-btn:active { background: rgba(59, 130, 246, 0.4); }
+        .arrow-up { grid-area: 1 / 2; }
+        .arrow-down { grid-area: 3 / 2; }
+        .arrow-left { grid-area: 2 / 1; }
+        .arrow-right { grid-area: 2 / 3; }
 
         /* Game Over */
         #gameover-screen {
@@ -309,6 +343,14 @@
                 <div class="touch-zone tz-left" data-dir="left"></div>
                 <div class="touch-zone tz-right" data-dir="right"></div>
                 <div class="touch-zone tz-down" data-dir="down"></div>
+            </div>
+        </div>
+        <div class="mobile-controls">
+            <div class="arrow-pad">
+                <div class="arrow-btn arrow-up" data-dir="up">▲</div>
+                <div class="arrow-btn arrow-left" data-dir="left">◀</div>
+                <div class="arrow-btn arrow-right" data-dir="right">▶</div>
+                <div class="arrow-btn arrow-down" data-dir="down">▼</div>
             </div>
         </div>
     </div>
@@ -530,6 +572,21 @@
                     if (inputQueue.length > 3) inputQueue.shift();
                 }, { passive: false });
             });
+
+            // Arrow button controls for mobile
+            document.querySelectorAll('.arrow-btn').forEach(btn => {
+                const handler = e => {
+                    if (!gameRunning) return;
+                    e.preventDefault();
+                    const dirs = { up: [0,-1], down: [0,1], left: [-1,0], right: [1,0] };
+                    [player.nextDx, player.nextDy] = dirs[btn.dataset.dir];
+                    inputQueue.push({ dx: dirs[btn.dataset.dir][0], dy: dirs[btn.dataset.dir][1], time: Date.now() });
+                    if (inputQueue.length > 3) inputQueue.shift();
+                };
+                btn.addEventListener('touchstart', handler, { passive: false });
+                btn.addEventListener('mousedown', handler);
+            });
+
             document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
         }
 
