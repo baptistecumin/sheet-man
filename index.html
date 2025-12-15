@@ -447,6 +447,7 @@
             score = 0; enemiesEaten = 0; powered = false; elapsedSeconds = 0;
             startTime = Date.now();
             floatingMessages = [];
+            deathFade = 0;
             if (powerTimer) clearTimeout(powerTimer);
 
             player = { x: 9, y: 15, dx: 0, dy: 0, nextDx: 0, nextDy: 0, munch: 0 };
@@ -604,7 +605,13 @@
         function checkCollision() {
             enemies.forEach(e => {
                 if (e.eaten) return;
-                if (e.x === player.x && e.y === player.y) {
+                // Check both current position AND if they crossed paths
+                const sameCell = e.x === player.x && e.y === player.y;
+                // Check if they swapped positions (crossed paths)
+                const crossed = (e.x === player.x - player.dx && e.y === player.y - player.dy &&
+                                player.x === e.x + e.dx && player.y === e.y + e.dy);
+
+                if (sameCell || crossed) {
                     if (e.scared) {
                         // Delete the file!
                         e.eaten = true;
@@ -632,14 +639,32 @@
 
         function gameOver() {
             gameRunning = false;
-            calculateFinalScore(false);
+            deathFade = 0.01; // Start fade
+            animFrame = requestAnimationFrame(gameLoop);
+        }
+
+        function showGameOver() {
+            baseScore = score;
+            const timeLeft = Math.max(0, MAX_TIME - elapsedSeconds);
+            timeBonus = Math.floor(timeLeft * 10);
+            finalScore = baseScore + timeBonus;
+
+            document.getElementById('game-container').classList.add('hidden');
+            document.getElementById('final-score').textContent = finalScore.toLocaleString();
+            document.getElementById('breakdown').innerHTML = `
+                <div class="bonus-row"><span>Data cleaned</span><span>${baseScore.toLocaleString()}</span></div>
+                <div class="bonus-row"><span>Files deleted (${enemiesEaten})</span><span>included</span></div>
+                <div class="bonus-row"><span>Time bonus</span><span>+${timeBonus.toLocaleString()}</span></div>
+            `;
+            document.getElementById('gameover-screen').style.display = 'flex';
+            document.getElementById('player-name').value = '';
         }
 
         function calculateFinalScore(won) {
+            // For win, show immediately
             baseScore = score;
             const timeLeft = Math.max(0, MAX_TIME - elapsedSeconds);
-            timeBonus = Math.floor(timeLeft * 10); // Always add time bonus
-
+            timeBonus = Math.floor(timeLeft * 10);
             finalScore = baseScore + timeBonus;
 
             document.getElementById('game-container').classList.add('hidden');
@@ -710,29 +735,18 @@
             });
             ctx.shadowBlur = 0;
 
-            // Player - Rastro logo with chomping animation
+            // Player - Rastro logo pointing in direction of travel
             const px = player.x * CELL + CELL/2;
             const py = player.y * CELL + CELL/2;
             const size = CELL;
 
-            // Continuous animation when moving
-            const isMoving = player.dx !== 0 || player.dy !== 0;
-            const animSpeed = isMoving ? 0.5 : 0.15;
-            const bounce = Math.sin(Date.now() * 0.015) * (isMoving ? 3 : 1); // Bounce up/down
-            const chomp = Math.abs(Math.sin(Date.now() * 0.02)) * 0.2; // Chomp effect
-
             ctx.save();
-            ctx.translate(px, py + bounce);
+            ctx.translate(px, py);
 
-            // Rotate based on direction
-            if (player.dx === -1) ctx.scale(-1, 1);
-            else if (player.dy === -1) ctx.rotate(-Math.PI/2);
-            else if (player.dy === 1) ctx.rotate(Math.PI/2);
-
-            // Squish/stretch for chomping effect
-            const scaleX = 1 + chomp * 0.3;
-            const scaleY = 1 - chomp * 0.15;
-            ctx.scale(scaleX, scaleY);
+            // Point in direction of travel (default: right)
+            if (player.dx === -1) ctx.scale(-1, 1); // Flip for left
+            else if (player.dy === -1) ctx.rotate(-Math.PI/2); // Up
+            else if (player.dy === 1) ctx.rotate(Math.PI/2); // Down
 
             // Draw actual Rastro logo using the SVG path
             ctx.fillStyle = powered ? '#22c55e' : '#3b82f6';
@@ -868,10 +882,28 @@
         }
 
         let lastTime = 0;
+        let deathFade = 0; // For fade to black on death
+
         function gameLoop(ts = 0) {
-            if (!gameRunning) return;
+            if (!gameRunning) {
+                // Death fade animation
+                if (deathFade > 0 && deathFade < 1) {
+                    deathFade += 0.02;
+                    draw();
+                    // Draw fade overlay
+                    ctx.fillStyle = `rgba(15, 23, 42, ${deathFade})`;
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    if (deathFade >= 1) {
+                        showGameOver();
+                    } else {
+                        animFrame = requestAnimationFrame(gameLoop);
+                    }
+                }
+                return;
+            }
             updateTimer();
-            if (ts - lastTime >= 120) {
+            // Faster game tick - 80ms instead of 120ms
+            if (ts - lastTime >= 80) {
                 movePlayer();
                 moveEnemies();
                 checkCollision();
