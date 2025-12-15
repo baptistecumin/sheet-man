@@ -45,14 +45,14 @@
             padding: 24px;
         }
         #start-screen { background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); }
-        .logo { width: 56px; height: 56px; margin-bottom: 12px; filter: drop-shadow(0 0 20px rgba(59, 130, 246, 0.5)); }
-        .title { font-size: 32px; font-weight: 800; color: #fff; letter-spacing: -0.04em; text-shadow: 0 0 30px rgba(59, 130, 246, 0.5); text-align: center; }
-        .tagline { color: #94a3b8; font-size: 14px; margin-top: 4px; text-align: center; max-width: 280px; }
+        .logo { width: 80px; height: 80px; margin-bottom: 20px; filter: drop-shadow(0 0 30px rgba(59, 130, 246, 0.6)); }
+        .title { font-size: 28px; font-weight: 800; color: #fff; letter-spacing: -0.04em; text-shadow: 0 0 30px rgba(59, 130, 246, 0.5); text-align: center; }
+        .tagline { color: #94a3b8; font-size: 15px; margin-top: 8px; text-align: center; max-width: 300px; line-height: 1.5; }
         .click-to-play {
             color: #60a5fa;
             font-size: 18px;
             font-weight: 600;
-            margin-top: 32px;
+            margin-top: 40px;
             animation: pulse 2s ease-in-out infinite;
         }
         @keyframes pulse {
@@ -134,11 +134,18 @@
             background: #0f172a;
             overflow: hidden;
         }
+        .game-instruction {
+            color: #94a3b8;
+            font-size: 12px;
+            text-align: center;
+            padding: 8px 16px 0;
+            margin: 0;
+        }
         .game-hud {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 16px 20px;
+            padding: 12px 20px;
             color: #fff;
         }
         .hud-score {
@@ -325,10 +332,11 @@
             <button class="btn-ghost btn-white" onclick="submitScore()">Save</button>
         </div>
         <button id="retry-btn" class="btn hidden" style="margin-top:16px;background:#fff;color:var(--blue)" onclick="startGame()">Play Again</button>
-        <p class="cta-text">Stop playing with spreadsheets. <a href="https://rastro.ai">Try Rastro</a></p>
+        <p class="cta-text">Stop playing with spreadsheets. <a href="https://rastro.ai/demo">Try Rastro</a></p>
     </div>
 
     <div id="game-container" class="hidden">
+        <p class="game-instruction">Clean all the products before the spreadsheets get you!</p>
         <div class="game-hud">
             <span class="hud-score" id="hud-score">0</span>
             <div class="hud-right">
@@ -805,8 +813,8 @@
             document.getElementById('final-score').textContent = finalScore.toLocaleString();
             document.getElementById('breakdown').innerHTML = `
                 <div class="bonus-row"><span>SKUs cleaned</span><span>${baseScore.toLocaleString()}</span></div>
-                <div class="bonus-row"><span>Files deleted (${enemiesEaten})</span><span>included</span></div>
-                <div class="bonus-row"><span>Time bonus</span><span>+${timeBonus.toLocaleString()}</span></div>
+                <div class="bonus-row"><span>Spreadsheets destroyed</span><span>${enemiesEaten}</span></div>
+                <div class="bonus-row"><span>Time saved bonus</span><span>+${timeBonus.toLocaleString()}</span></div>
             `;
             document.getElementById('gameover-screen').style.display = 'flex';
             document.getElementById('player-name').value = '';
@@ -823,8 +831,8 @@
             document.getElementById('final-score').textContent = finalScore.toLocaleString();
             document.getElementById('breakdown').innerHTML = `
                 <div class="bonus-row"><span>SKUs cleaned</span><span>${baseScore.toLocaleString()}</span></div>
-                <div class="bonus-row"><span>Files deleted (${enemiesEaten})</span><span>included</span></div>
-                <div class="bonus-row"><span>Time bonus</span><span>+${timeBonus.toLocaleString()}</span></div>
+                <div class="bonus-row"><span>Spreadsheets destroyed</span><span>${enemiesEaten}</span></div>
+                <div class="bonus-row"><span>Time saved bonus</span><span>+${timeBonus.toLocaleString()}</span></div>
             `;
             document.getElementById('gameover-screen').style.display = 'flex';
             document.getElementById('player-name').value = '';
