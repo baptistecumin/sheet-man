@@ -334,6 +334,16 @@
         let baseScore = 0, timeBonus = 0, finalScore = 0;
         const MAX_TIME = 120;
 
+        // Floating messages
+        let floatingMessages = [];
+        const EAT_MESSAGES = [
+            "No more spreadsheets!",
+            "Data liberated!",
+            "Bye bye Excel!",
+            "Clean data wins!",
+            "Spreadsheet deleted!",
+        ];
+
         // Spreadsheet enemies - all variations of spreadsheets
         const ENEMIES = [
             { type: 'xls', label: '.xlsx', bg: '#217346', speed: 3 },
@@ -436,6 +446,7 @@
 
             score = 0; enemiesEaten = 0; powered = false; elapsedSeconds = 0;
             startTime = Date.now();
+            floatingMessages = [];
             if (powerTimer) clearTimeout(powerTimer);
 
             player = { x: 9, y: 15, dx: 0, dy: 0, nextDx: 0, nextDy: 0, munch: 0 };
@@ -518,55 +529,40 @@
             }, 6000);
         }
 
-        // BFS pathfinding for eaten enemies
-        function findPath(startX, startY, targetX, targetY) {
-            const visited = new Set();
-            const queue = [[startX, startY, []]];
-            visited.add(`${startX},${startY}`);
-
-            while (queue.length > 0) {
-                const [x, y, path] = queue.shift();
-
-                if (x === targetX && y === targetY) {
-                    return path.length > 0 ? path[0] : null;
-                }
-
-                const dirs = [[0, -1], [0, 1], [-1, 0], [1, 0]];
-                for (const [dx, dy] of dirs) {
-                    const nx = x + dx;
-                    const ny = y + dy;
-                    const key = `${nx},${ny}`;
-
-                    if (!visited.has(key) && canMove(nx, ny) && ny >= 0 && ny < ROWS) {
-                        visited.add(key);
-                        queue.push([nx, ny, path.length === 0 ? [dx, dy] : path]);
-                    }
-                }
-            }
-            return null; // No path found
-        }
-
-        const SPAWN_X = 9, SPAWN_Y = 9; // Center of ghost house
+        const SPAWN_X = 9, SPAWN_Y = 7; // Just outside ghost house
 
         function moveEnemies() {
             enemies.forEach(e => {
                 if (e.eaten) {
-                    // Return to spawn using BFS pathfinding
-                    if (e.x === SPAWN_X && e.y === SPAWN_Y) {
+                    // Return to spawn - simple direct movement, faster
+                    if (Math.abs(e.x - SPAWN_X) <= 1 && Math.abs(e.y - SPAWN_Y) <= 1) {
+                        e.x = SPAWN_X;
+                        e.y = SPAWN_Y;
                         e.eaten = false;
                         e.scared = powered;
-                        // Reset direction to move out of spawn
                         e.dx = 0;
-                        e.dy = -1; // Move up out of the base
+                        e.dy = 1;
                         e.mc = 0;
                         return;
                     }
 
-                    // Use pathfinding to navigate back (faster than normal movement)
-                    const nextMove = findPath(e.x, e.y, SPAWN_X, SPAWN_Y);
-                    if (nextMove) {
-                        e.x += nextMove[0];
-                        e.y += nextMove[1];
+                    // Move towards spawn (simple pathfinding, runs every frame for speed)
+                    const dx = e.x < SPAWN_X ? 1 : e.x > SPAWN_X ? -1 : 0;
+                    const dy = e.y < SPAWN_Y ? 1 : e.y > SPAWN_Y ? -1 : 0;
+
+                    // Try horizontal first, then vertical
+                    if (dx !== 0 && canMove(e.x + dx, e.y)) {
+                        e.x += dx;
+                    } else if (dy !== 0 && canMove(e.x, e.y + dy)) {
+                        e.y += dy;
+                    } else if (dx !== 0) {
+                        // Try vertical if horizontal blocked
+                        if (canMove(e.x, e.y - 1)) e.y -= 1;
+                        else if (canMove(e.x, e.y + 1)) e.y += 1;
+                    } else if (dy !== 0) {
+                        // Try horizontal if vertical blocked
+                        if (canMove(e.x - 1, e.y)) e.x -= 1;
+                        else if (canMove(e.x + 1, e.y)) e.x += 1;
                     }
                     return;
                 }
@@ -594,6 +590,17 @@
             });
         }
 
+        function showFloatingMessage(x, y, text, points) {
+            floatingMessages.push({
+                x: x * CELL + CELL/2,
+                y: y * CELL,
+                text: text,
+                points: points,
+                opacity: 1,
+                life: 60 // frames
+            });
+        }
+
         function checkCollision() {
             enemies.forEach(e => {
                 if (e.eaten) return;
@@ -604,10 +611,13 @@
                         enemiesEaten++;
                         const points = 200 * Math.pow(2, Math.min(enemiesEaten - 1, 3)); // 200, 400, 800, 1600
                         score += points;
-                        // Time bonus for eating enemy: add 5 seconds worth of bonus
+                        // Time bonus for eating enemy
                         const eatBonus = 50;
                         score += eatBonus;
                         updateHUD();
+                        // Show floating message
+                        const msg = EAT_MESSAGES[Math.floor(Math.random() * EAT_MESSAGES.length)];
+                        showFloatingMessage(e.x, e.y, msg, points);
                     } else {
                         gameOver();
                     }
@@ -655,6 +665,11 @@
             const timerEl = document.getElementById('hud-timer');
             timerEl.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
             timerEl.className = 'hud-timer' + (remaining <= 30 ? ' warning' : '') + (remaining <= 10 ? ' critical' : '');
+
+            // Time's up!
+            if (remaining <= 0 && gameRunning) {
+                gameOver();
+            }
         }
 
         function draw() {
@@ -695,22 +710,28 @@
             });
             ctx.shadowBlur = 0;
 
-            // Player - Rastro logo with munching animation
+            // Player - Rastro logo with chomping animation
             const px = player.x * CELL + CELL/2;
             const py = player.y * CELL + CELL/2;
             const size = CELL;
-            const munch = Math.sin(player.munch * 0.8) * 0.12; // Squish animation
+
+            // Continuous animation when moving
+            const isMoving = player.dx !== 0 || player.dy !== 0;
+            const animSpeed = isMoving ? 0.5 : 0.15;
+            const bounce = Math.sin(Date.now() * 0.015) * (isMoving ? 3 : 1); // Bounce up/down
+            const chomp = Math.abs(Math.sin(Date.now() * 0.02)) * 0.2; // Chomp effect
 
             ctx.save();
-            ctx.translate(px, py);
+            ctx.translate(px, py + bounce);
 
-            // Flip based on direction
+            // Rotate based on direction
             if (player.dx === -1) ctx.scale(-1, 1);
-            else if (player.dy !== 0) ctx.rotate(player.dy * Math.PI/2);
+            else if (player.dy === -1) ctx.rotate(-Math.PI/2);
+            else if (player.dy === 1) ctx.rotate(Math.PI/2);
 
-            // Squish effect when moving
-            const scaleX = 1 + munch;
-            const scaleY = 1 - munch * 0.5;
+            // Squish/stretch for chomping effect
+            const scaleX = 1 + chomp * 0.3;
+            const scaleY = 1 - chomp * 0.15;
             ctx.scale(scaleX, scaleY);
 
             // Draw actual Rastro logo using the SVG path
@@ -821,6 +842,28 @@
                 ctx.fillText(e.label, 0, -sh/2 + sh * 0.125);
 
                 ctx.restore();
+            });
+
+            // Floating messages
+            floatingMessages = floatingMessages.filter(m => {
+                m.life--;
+                m.y -= 0.8; // Float up
+                m.opacity = m.life / 60;
+
+                if (m.life <= 0) return false;
+
+                ctx.save();
+                ctx.globalAlpha = m.opacity;
+                ctx.fillStyle = '#22c55e';
+                ctx.font = 'bold 10px Inter, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(`+${m.points}`, m.x, m.y);
+                ctx.fillStyle = '#fff';
+                ctx.font = '8px Inter, sans-serif';
+                ctx.fillText(m.text, m.x, m.y + 10);
+                ctx.restore();
+
+                return true;
             });
         }
 
