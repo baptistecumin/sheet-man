@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>SHEET-MAN</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Courier New', monospace;
+            background: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+            touch-action: none;
+        }
+        #game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        #score {
+            font-size: 18px;
+            color: #333;
+            background: #fff;
+            padding: 8px 16px;
+            border: 2px solid #1a5e1a;
+        }
+        canvas {
+            border: 3px solid #1a5e1a;
+            background: #fff;
+        }
+        .screen {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            text-align: center;
+            padding: 20px;
+        }
+        #start-screen { background: #fff; }
+        #start-screen h1 { font-size: 48px; color: #1a5e1a; }
+        #start-screen p { color: #666; font-size: 16px; }
+        #gameover-screen {
+            background: #0078d7;
+            color: #fff;
+            display: none;
+        }
+        #gameover-screen h1 { font-size: 24px; }
+        #gameover-screen p { font-size: 14px; max-width: 400px; }
+        .btn {
+            background: #1a5e1a;
+            color: #fff;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .btn:hover { background: #2a7e2a; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <div id="start-screen" class="screen">
+        <h1>SHEET-MAN</h1>
+        <p>Don't let the spreadsheets crash you.</p>
+        <p style="font-size:12px;color:#999;">Arrow keys or swipe to move</p>
+        <button class="btn" onclick="startGame()">START CLEANING</button>
+    </div>
+
+    <div id="gameover-screen" class="screen">
+        <h1>:( CRITICAL ERROR</h1>
+        <p>The Excel file was too large.</p>
+        <p style="font-size:12px;">Stop playing games with your data.<br>Rastro cleans catalogs automatically.</p>
+        <p id="final-score"></p>
+        <button class="btn" onclick="startGame()">Try Again</button>
+    </div>
+
+    <div id="game-container" class="hidden">
+        <div id="score">SKUs Cleaned: <span id="score-value">0</span></div>
+        <canvas id="canvas"></canvas>
+    </div>
+
+    <script>
+        const CELL = 20;
+        const COLS = 19;
+        const ROWS = 21;
+
+        // 1 = wall, 0 = path, 2 = power-up
+        const MAP = [
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+            [1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1],
+            [1,2,1,1,0,1,1,1,0,1,0,1,1,1,0,1,1,2,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,1,1,0,1,0,1,1,1,1,1,0,1,0,1,1,0,1],
+            [1,0,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,0,1],
+            [1,1,1,1,0,1,1,1,0,1,0,1,1,1,0,1,1,1,1],
+            [1,1,1,1,0,1,0,0,0,0,0,0,0,1,0,1,1,1,1],
+            [1,1,1,1,0,1,0,1,1,0,1,1,0,1,0,1,1,1,1],
+            [0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0],
+            [1,1,1,1,0,1,0,1,1,1,1,1,0,1,0,1,1,1,1],
+            [1,1,1,1,0,1,0,0,0,0,0,0,0,1,0,1,1,1,1],
+            [1,1,1,1,0,1,0,1,1,1,1,1,0,1,0,1,1,1,1],
+            [1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1],
+            [1,0,1,1,0,1,1,1,0,1,0,1,1,1,0,1,1,0,1],
+            [1,2,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,2,1],
+            [1,1,0,1,0,1,0,1,1,1,1,1,0,1,0,1,0,1,1],
+            [1,0,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,0,1],
+            [1,0,1,1,1,1,1,1,0,1,0,1,1,1,1,1,1,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+        ];
+
+        let canvas, ctx;
+        let player, enemies, dots, powerUps;
+        let score = 0;
+        let gameRunning = false;
+        let powered = false;
+        let powerTimer = null;
+        let animFrame;
+
+        const ENEMIES_CONFIG = [
+            { name: 'XLS', color: '#1a7e1a', speed: 3 },
+            { name: 'PDF', color: '#cc3333', speed: 2 },
+            { name: 'ERP', color: '#666666', speed: 1 },
+            { name: 'ZIP', color: '#ccaa00', speed: 2 },
+        ];
+
+        function init() {
+            canvas = document.getElementById('canvas');
+            ctx = canvas.getContext('2d');
+            canvas.width = COLS * CELL;
+            canvas.height = ROWS * CELL;
+            setupControls();
+        }
+
+        function startGame() {
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('gameover-screen').style.display = 'none';
+            document.getElementById('game-container').classList.remove('hidden');
+
+            score = 0;
+            powered = false;
+            if (powerTimer) clearTimeout(powerTimer);
+
+            player = { x: 9, y: 15, dx: 0, dy: 0, nextDx: 0, nextDy: 0 };
+
+            enemies = ENEMIES_CONFIG.map((cfg, i) => ({
+                ...cfg,
+                x: 8 + i,
+                y: 9,
+                dx: Math.random() > 0.5 ? 1 : -1,
+                dy: 0,
+                moveCounter: 0
+            }));
+
+            dots = [];
+            powerUps = [];
+            for (let y = 0; y < ROWS; y++) {
+                for (let x = 0; x < COLS; x++) {
+                    if (MAP[y][x] === 0) dots.push({ x, y });
+                    if (MAP[y][x] === 2) powerUps.push({ x, y });
+                }
+            }
+
+            updateScore();
+            gameRunning = true;
+            if (animFrame) cancelAnimationFrame(animFrame);
+            gameLoop();
+        }
+
+        function setupControls() {
+            document.addEventListener('keydown', e => {
+                if (!gameRunning) return;
+                switch(e.key) {
+                    case 'ArrowUp': player.nextDx = 0; player.nextDy = -1; break;
+                    case 'ArrowDown': player.nextDx = 0; player.nextDy = 1; break;
+                    case 'ArrowLeft': player.nextDx = -1; player.nextDy = 0; break;
+                    case 'ArrowRight': player.nextDx = 1; player.nextDy = 0; break;
+                }
+                e.preventDefault();
+            });
+
+            let touchStartX, touchStartY;
+            document.addEventListener('touchstart', e => {
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+            }, { passive: false });
+
+            document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+
+            document.addEventListener('touchend', e => {
+                if (!gameRunning) return;
+                const dx = e.changedTouches[0].clientX - touchStartX;
+                const dy = e.changedTouches[0].clientY - touchStartY;
+                if (Math.abs(dx) > Math.abs(dy)) {
+                    player.nextDx = dx > 0 ? 1 : -1;
+                    player.nextDy = 0;
+                } else {
+                    player.nextDx = 0;
+                    player.nextDy = dy > 0 ? 1 : -1;
+                }
+            });
+        }
+
+        function canMove(x, y) {
+            // Handle tunnel
+            if (x < 0 || x >= COLS) return true;
+            if (y < 0 || y >= ROWS) return false;
+            return MAP[y][x] !== 1;
+        }
+
+        function movePlayer() {
+            // Try next direction
+            if (canMove(player.x + player.nextDx, player.y + player.nextDy)) {
+                player.dx = player.nextDx;
+                player.dy = player.nextDy;
+            }
+
+            // Move if possible
+            if (canMove(player.x + player.dx, player.y + player.dy)) {
+                player.x += player.dx;
+                player.y += player.dy;
+            }
+
+            // Tunnel wrap
+            if (player.x < 0) player.x = COLS - 1;
+            if (player.x >= COLS) player.x = 0;
+
+            // Eat dots
+            const dotIdx = dots.findIndex(d => d.x === player.x && d.y === player.y);
+            if (dotIdx !== -1) {
+                dots.splice(dotIdx, 1);
+                score += 10;
+                updateScore();
+            }
+
+            // Eat power-up
+            const puIdx = powerUps.findIndex(p => p.x === player.x && p.y === player.y);
+            if (puIdx !== -1) {
+                powerUps.splice(puIdx, 1);
+                score += 50;
+                updateScore();
+                activatePower();
+            }
+
+            // Win condition
+            if (dots.length === 0 && powerUps.length === 0) {
+                gameRunning = false;
+                alert('You cleaned all the data! Score: ' + score);
+                startGame();
+            }
+        }
+
+        function activatePower() {
+            powered = true;
+            if (powerTimer) clearTimeout(powerTimer);
+            powerTimer = setTimeout(() => { powered = false; }, 5000);
+        }
+
+        function moveEnemies() {
+            enemies.forEach(enemy => {
+                enemy.moveCounter++;
+                if (enemy.moveCounter < (4 - enemy.speed)) return;
+                enemy.moveCounter = 0;
+
+                const dirs = [[0,-1],[0,1],[-1,0],[1,0]].filter(
+                    d => canMove(enemy.x + d[0], enemy.y + d[1]) &&
+                         !(d[0] === -enemy.dx && d[1] === -enemy.dy)
+                );
+
+                if (dirs.length > 0) {
+                    // Simple chase: prefer direction toward player
+                    dirs.sort((a, b) => {
+                        const distA = Math.abs(player.x - (enemy.x + a[0])) + Math.abs(player.y - (enemy.y + a[1]));
+                        const distB = Math.abs(player.x - (enemy.x + b[0])) + Math.abs(player.y - (enemy.y + b[1]));
+                        return powered ? distB - distA : distA - distB; // Flee when powered
+                    });
+                    const choice = Math.random() > 0.3 ? dirs[0] : dirs[Math.floor(Math.random() * dirs.length)];
+                    enemy.dx = choice[0];
+                    enemy.dy = choice[1];
+                }
+
+                if (canMove(enemy.x + enemy.dx, enemy.y + enemy.dy)) {
+                    enemy.x += enemy.dx;
+                    enemy.y += enemy.dy;
+                }
+
+                // Tunnel
+                if (enemy.x < 0) enemy.x = COLS - 1;
+                if (enemy.x >= COLS) enemy.x = 0;
+            });
+        }
+
+        function checkCollision() {
+            enemies.forEach((enemy, idx) => {
+                if (enemy.x === player.x && enemy.y === player.y) {
+                    if (powered) {
+                        // Eat enemy, respawn
+                        enemy.x = 9;
+                        enemy.y = 9;
+                        score += 200;
+                        updateScore();
+                    } else {
+                        gameOver();
+                    }
+                }
+            });
+        }
+
+        function gameOver() {
+            gameRunning = false;
+            document.getElementById('game-container').classList.add('hidden');
+            document.getElementById('final-score').textContent = 'SKUs Cleaned: ' + score;
+            document.getElementById('gameover-screen').style.display = 'flex';
+        }
+
+        function updateScore() {
+            document.getElementById('score-value').textContent = score;
+        }
+
+        function draw() {
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Grid lines
+            ctx.strokeStyle = '#e0e0e0';
+            ctx.lineWidth = 1;
+            for (let x = 0; x <= COLS; x++) {
+                ctx.beginPath();
+                ctx.moveTo(x * CELL, 0);
+                ctx.lineTo(x * CELL, canvas.height);
+                ctx.stroke();
+            }
+            for (let y = 0; y <= ROWS; y++) {
+                ctx.beginPath();
+                ctx.moveTo(0, y * CELL);
+                ctx.lineTo(canvas.width, y * CELL);
+                ctx.stroke();
+            }
+
+            // Walls
+            ctx.fillStyle = '#1a5e1a';
+            for (let y = 0; y < ROWS; y++) {
+                for (let x = 0; x < COLS; x++) {
+                    if (MAP[y][x] === 1) {
+                        ctx.fillRect(x * CELL + 1, y * CELL + 1, CELL - 2, CELL - 2);
+                    }
+                }
+            }
+
+            // Dots
+            ctx.fillStyle = '#999';
+            dots.forEach(d => {
+                ctx.beginPath();
+                ctx.arc(d.x * CELL + CELL/2, d.y * CELL + CELL/2, 3, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Power-ups
+            ctx.fillStyle = '#ffd700';
+            ctx.font = '14px Arial';
+            powerUps.forEach(p => {
+                ctx.fillText('✓', p.x * CELL + 4, p.y * CELL + 15);
+            });
+
+            // Player
+            ctx.fillStyle = powered ? '#00ffff' : '#0066cc';
+            ctx.beginPath();
+            ctx.arc(player.x * CELL + CELL/2, player.y * CELL + CELL/2, CELL/2 - 2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Enemies
+            enemies.forEach(e => {
+                ctx.fillStyle = powered ? '#aaa' : e.color;
+                ctx.fillRect(e.x * CELL + 2, e.y * CELL + 2, CELL - 4, CELL - 4);
+                ctx.fillStyle = '#fff';
+                ctx.font = '10px Courier';
+                ctx.fillText(e.name, e.x * CELL + 2, e.y * CELL + 14);
+            });
+        }
+
+        let lastTime = 0;
+        const TICK = 150;
+
+        function gameLoop(timestamp = 0) {
+            if (!gameRunning) return;
+
+            if (timestamp - lastTime >= TICK) {
+                movePlayer();
+                moveEnemies();
+                checkCollision();
+                lastTime = timestamp;
+            }
+
+            draw();
+            animFrame = requestAnimationFrame(gameLoop);
+        }
+
+        init();
+    </script>
+</body>
+</html>
