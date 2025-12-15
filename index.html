@@ -462,6 +462,7 @@
             score = 0; enemiesEaten = 0; powered = false; elapsedSeconds = 0;
             startTime = Date.now();
             floatingMessages = [];
+            inputQueue = [];
             deathFade = 0;
             if (powerTimer) clearTimeout(powerTimer);
 
@@ -490,11 +491,19 @@
             gameLoop();
         }
 
+        let inputQueue = []; // Buffer for key inputs
+
         function setupControls() {
             document.addEventListener('keydown', e => {
                 if (!gameRunning) return;
                 const keys = { ArrowUp: [0,-1], ArrowDown: [0,1], ArrowLeft: [-1,0], ArrowRight: [1,0], w: [0,-1], s: [0,1], a: [-1,0], d: [1,0] };
-                if (keys[e.key]) { [player.nextDx, player.nextDy] = keys[e.key]; e.preventDefault(); }
+                if (keys[e.key]) {
+                    [player.nextDx, player.nextDy] = keys[e.key];
+                    // Add to queue for buffered input
+                    inputQueue.push({ dx: keys[e.key][0], dy: keys[e.key][1], time: Date.now() });
+                    if (inputQueue.length > 3) inputQueue.shift(); // Keep last 3 inputs
+                    e.preventDefault();
+                }
             });
             document.querySelectorAll('.touch-zone').forEach(z => {
                 z.addEventListener('touchstart', e => {
@@ -502,6 +511,8 @@
                     e.preventDefault();
                     const dirs = { up: [0,-1], down: [0,1], left: [-1,0], right: [1,0] };
                     [player.nextDx, player.nextDy] = dirs[z.dataset.dir];
+                    inputQueue.push({ dx: dirs[z.dataset.dir][0], dy: dirs[z.dataset.dir][1], time: Date.now() });
+                    if (inputQueue.length > 3) inputQueue.shift();
                 }, { passive: false });
             });
             document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
@@ -514,7 +525,27 @@
         }
 
         function tryChangeDirection() {
-            // Try to change direction immediately if possible (responsive controls)
+            // Try buffered inputs (most recent first) for responsive controls
+            const now = Date.now();
+            for (let i = inputQueue.length - 1; i >= 0; i--) {
+                const input = inputQueue[i];
+                // Only use inputs from last 500ms
+                if (now - input.time > 500) {
+                    inputQueue.splice(i, 1);
+                    continue;
+                }
+                // Try to apply this direction
+                if (canMove(player.x + input.dx, player.y + input.dy)) {
+                    player.dx = input.dx;
+                    player.dy = input.dy;
+                    player.nextDx = input.dx;
+                    player.nextDy = input.dy;
+                    inputQueue.splice(i, 1); // Remove used input
+                    break;
+                }
+            }
+
+            // Also try the current nextDx/nextDy
             if (player.nextDx !== player.dx || player.nextDy !== player.dy) {
                 if (canMove(player.x + player.nextDx, player.y + player.nextDy)) {
                     player.dx = player.nextDx;
@@ -929,8 +960,8 @@
             updateTimer();
             // Check direction changes every frame for responsiveness
             tryChangeDirection();
-            // Game tick - 100ms for balanced speed
-            if (ts - lastTime >= 100) {
+            // Game tick - 130ms for slower, more deliberate pace
+            if (ts - lastTime >= 130) {
                 movePlayer();
                 moveEnemies();
                 checkCollision();
