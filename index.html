@@ -2,37 +2,45 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>SHEET-MAN</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sheet-Man | Rastro</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --rastro-blue: #0817EC;
+            --blue-600: #2563eb;
+            --blue-700: #1d4ed8;
+            --slate-50: #f8fafc;
+            --slate-100: #f1f5f9;
+            --slate-200: #e2e8f0;
+            --slate-300: #cbd5e1;
+            --slate-400: #94a3b8;
+            --slate-500: #64748b;
+            --slate-600: #475569;
+            --slate-700: #334155;
+            --slate-800: #1e293b;
+            --slate-900: #0f172a;
+        }
+
         body {
-            font-family: 'Courier New', monospace;
-            background: #f0f0f0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--slate-50);
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
+            min-height: 100dvh;
             overflow: hidden;
             touch-action: none;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
         }
-        #game-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 10px;
-        }
-        #score {
-            font-size: 18px;
-            color: #333;
-            background: #fff;
-            padding: 8px 16px;
-            border: 2px solid #1a5e1a;
-        }
-        canvas {
-            border: 3px solid #1a5e1a;
-            background: #fff;
-        }
+
         .screen {
             position: fixed;
             top: 0; left: 0;
@@ -41,60 +49,321 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            gap: 20px;
+            gap: 16px;
             text-align: center;
-            padding: 20px;
+            padding: 24px;
+            background: var(--slate-50);
         }
-        #start-screen { background: #fff; }
-        #start-screen h1 { font-size: 48px; color: #1a5e1a; }
-        #start-screen p { color: #666; font-size: 16px; }
+
+        h1 {
+            font-size: 32px;
+            font-weight: 600;
+            color: var(--slate-900);
+            letter-spacing: -0.03em;
+        }
+
+        .subtitle {
+            color: var(--slate-500);
+            font-size: 14px;
+            font-weight: 400;
+        }
+
+        .hint {
+            color: var(--slate-400);
+            font-size: 12px;
+            margin-top: 8px;
+        }
+
+        .btn {
+            background: var(--blue-600);
+            color: #fff;
+            border: none;
+            padding: 12px 24px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            font-family: inherit;
+            border-radius: 8px;
+            transition: background 0.15s ease;
+        }
+
+        .btn:hover, .btn:active {
+            background: var(--blue-700);
+        }
+
+        .btn-secondary {
+            background: var(--slate-200);
+            color: var(--slate-700);
+        }
+
+        .btn-secondary:hover {
+            background: var(--slate-300);
+        }
+
+        .hidden { display: none !important; }
+
+        /* Game container */
+        #game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        #score-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 12px 16px;
+            background: white;
+            border-bottom: 1px solid var(--slate-200);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+        }
+
+        #score {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--slate-700);
+        }
+
+        #score span {
+            color: var(--blue-600);
+            font-weight: 600;
+        }
+
+        #canvas-wrapper {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            position: relative;
+        }
+
+        canvas {
+            background: #fff;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        /* Touch zones overlay */
+        #touch-zones {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: 1fr 1fr 1fr;
+            pointer-events: none;
+        }
+
+        .touch-zone {
+            pointer-events: auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.1s;
+        }
+
+        .touch-zone:active {
+            opacity: 0.1;
+            background: var(--blue-600);
+        }
+
+        .touch-zone.top { grid-column: 2; grid-row: 1; }
+        .touch-zone.bottom { grid-column: 2; grid-row: 3; }
+        .touch-zone.left { grid-column: 1; grid-row: 2; }
+        .touch-zone.right { grid-column: 3; grid-row: 2; }
+
+        /* Game Over screen - BSOD style */
         #gameover-screen {
-            background: #0078d7;
+            background: var(--blue-600);
             color: #fff;
             display: none;
         }
-        #gameover-screen h1 { font-size: 24px; }
-        #gameover-screen p { font-size: 14px; max-width: 400px; }
-        .btn {
-            background: #1a5e1a;
+
+        #gameover-screen h1 {
             color: #fff;
-            border: none;
-            padding: 15px 30px;
-            font-size: 18px;
-            cursor: pointer;
-            font-family: inherit;
+            font-size: 24px;
         }
-        .btn:hover { background: #2a7e2a; }
-        .hidden { display: none !important; }
+
+        #gameover-screen p {
+            color: rgba(255,255,255,0.9);
+            font-size: 14px;
+            max-width: 320px;
+        }
+
+        #final-score {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 8px 0;
+        }
+
+        /* Leaderboard */
+        #leaderboard {
+            background: white;
+            border-radius: 8px;
+            padding: 16px;
+            width: 100%;
+            max-width: 280px;
+            margin-top: 16px;
+        }
+
+        #leaderboard h2 {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--slate-500);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 12px;
+        }
+
+        .leaderboard-list {
+            list-style: none;
+        }
+
+        .leaderboard-list li {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--slate-100);
+            font-size: 13px;
+        }
+
+        .leaderboard-list li:last-child {
+            border-bottom: none;
+        }
+
+        .leaderboard-list .rank {
+            color: var(--slate-400);
+            width: 24px;
+        }
+
+        .leaderboard-list .name {
+            flex: 1;
+            color: var(--slate-700);
+        }
+
+        .leaderboard-list .lb-score {
+            color: var(--blue-600);
+            font-weight: 500;
+        }
+
+        /* Name input */
+        #name-input-container {
+            display: none;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        #name-input-container input {
+            padding: 10px 14px;
+            border: 1px solid var(--slate-300);
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 14px;
+            text-align: center;
+            width: 200px;
+        }
+
+        #name-input-container input:focus {
+            outline: none;
+            border-color: var(--blue-600);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        /* Power indicator */
+        #power-indicator {
+            position: absolute;
+            top: 56px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #10b981;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        #power-indicator.active {
+            opacity: 1;
+        }
     </style>
 </head>
 <body>
     <div id="start-screen" class="screen">
-        <h1>SHEET-MAN</h1>
-        <p>Don't let the spreadsheets crash you.</p>
-        <p style="font-size:12px;color:#999;">Arrow keys or swipe to move</p>
-        <button class="btn" onclick="startGame()">START CLEANING</button>
+        <h1>Sheet-Man</h1>
+        <p class="subtitle">Don't let the spreadsheets crash you.</p>
+        <p class="hint">Tap screen edges or use arrow keys</p>
+        <button class="btn" onclick="startGame()">Start Cleaning</button>
+
+        <div id="leaderboard">
+            <h2>Leaderboard</h2>
+            <ul class="leaderboard-list" id="leaderboard-list">
+                <li><span class="rank">-</span><span class="name">Loading...</span><span class="lb-score"></span></li>
+            </ul>
+        </div>
     </div>
 
     <div id="gameover-screen" class="screen">
-        <h1>:( CRITICAL ERROR</h1>
+        <h1>:( Critical Error</h1>
         <p>The Excel file was too large.</p>
-        <p style="font-size:12px;">Stop playing games with your data.<br>Rastro cleans catalogs automatically.</p>
-        <p id="final-score"></p>
-        <button class="btn" onclick="startGame()">Try Again</button>
+        <p id="final-score">SKUs Cleaned: 0</p>
+
+        <div id="name-input-container">
+            <input type="text" id="player-name" placeholder="Your name" maxlength="20" autocomplete="off">
+            <div class="btn-row">
+                <button class="btn" onclick="submitScore()">Submit</button>
+                <button class="btn btn-secondary" onclick="skipSubmit()">Skip</button>
+            </div>
+        </div>
+
+        <button id="retry-btn" class="btn hidden" onclick="startGame()">Try Again</button>
+
+        <p class="hint" style="margin-top:16px;">Stop playing games with your data.<br>Rastro cleans catalogs automatically.</p>
     </div>
 
     <div id="game-container" class="hidden">
-        <div id="score">SKUs Cleaned: <span id="score-value">0</span></div>
-        <canvas id="canvas"></canvas>
+        <div id="score-bar">
+            <span id="score">SKUs Cleaned: <span id="score-value">0</span></span>
+            <span id="powered-badge" style="display:none;background:#10b981;color:white;padding:2px 8px;border-radius:4px;font-size:11px;">POWERED</span>
+        </div>
+        <div id="canvas-wrapper">
+            <canvas id="canvas"></canvas>
+            <div id="touch-zones">
+                <div class="touch-zone top" data-dir="up"></div>
+                <div class="touch-zone left" data-dir="left"></div>
+                <div class="touch-zone right" data-dir="right"></div>
+                <div class="touch-zone bottom" data-dir="down"></div>
+            </div>
+        </div>
     </div>
 
     <script>
-        const CELL = 20;
+        // Supabase config
+        const SUPABASE_URL = 'https://pkbcifdmebszcrpmlhxm.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBrYmNpZmRtZWJzemNycG1saHhtIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTQ0MzkwMCwiZXhwIjoyMDgxMDE5OTAwfQ.oxMxEUp7svTv_AXJC0-cLUWE7nOt5p_u2Ahxxiv98Fk';
+
+        // Game constants
+        const CELL = 18;
         const COLS = 19;
         const ROWS = 21;
 
-        // 1 = wall, 0 = path, 2 = power-up
         const MAP = [
             [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
             [1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1],
@@ -126,26 +395,107 @@
         let powered = false;
         let powerTimer = null;
         let animFrame;
+        let finalScore = 0;
 
         const ENEMIES_CONFIG = [
-            { name: 'XLS', color: '#1a7e1a', speed: 3 },
-            { name: 'PDF', color: '#cc3333', speed: 2 },
-            { name: 'ERP', color: '#666666', speed: 1 },
-            { name: 'ZIP', color: '#ccaa00', speed: 2 },
+            { name: 'XLS', color: '#22c55e', speed: 3 },
+            { name: 'PDF', color: '#ef4444', speed: 2 },
+            { name: 'ERP', color: '#64748b', speed: 1 },
+            { name: 'ZIP', color: '#eab308', speed: 2 },
         ];
+
+        // Leaderboard functions
+        async function fetchLeaderboard() {
+            try {
+                const res = await fetch(
+                    `${SUPABASE_URL}/rest/v1/sheetman_leaderboard?select=name,score&order=score.desc&limit=5`,
+                    {
+                        headers: {
+                            'apikey': SUPABASE_KEY,
+                            'Authorization': `Bearer ${SUPABASE_KEY}`
+                        }
+                    }
+                );
+                if (!res.ok) throw new Error('Failed to fetch');
+                const data = await res.json();
+                renderLeaderboard(data);
+            } catch (e) {
+                console.log('Leaderboard not available');
+                renderLeaderboard([]);
+            }
+        }
+
+        function renderLeaderboard(data) {
+            const list = document.getElementById('leaderboard-list');
+            if (!data || data.length === 0) {
+                list.innerHTML = '<li><span class="rank">-</span><span class="name">No scores yet</span><span class="lb-score"></span></li>';
+                return;
+            }
+            list.innerHTML = data.map((entry, i) =>
+                `<li><span class="rank">${i + 1}.</span><span class="name">${escapeHtml(entry.name)}</span><span class="lb-score">${entry.score}</span></li>`
+            ).join('');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        async function saveScore(name, score) {
+            try {
+                await fetch(`${SUPABASE_URL}/rest/v1/sheetman_leaderboard`, {
+                    method: 'POST',
+                    headers: {
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`,
+                        'Content-Type': 'application/json',
+                        'Prefer': 'return=minimal'
+                    },
+                    body: JSON.stringify({ name, score })
+                });
+                fetchLeaderboard();
+            } catch (e) {
+                console.log('Could not save score');
+            }
+        }
+
+        function submitScore() {
+            const nameInput = document.getElementById('player-name');
+            const name = nameInput.value.trim() || 'Anonymous';
+            saveScore(name, finalScore);
+            document.getElementById('name-input-container').style.display = 'none';
+            document.getElementById('retry-btn').classList.remove('hidden');
+        }
+
+        function skipSubmit() {
+            document.getElementById('name-input-container').style.display = 'none';
+            document.getElementById('retry-btn').classList.remove('hidden');
+        }
 
         function init() {
             canvas = document.getElementById('canvas');
             ctx = canvas.getContext('2d');
+
+            // Size canvas to fit screen
+            const maxWidth = Math.min(window.innerWidth - 32, 380);
+            const maxHeight = window.innerHeight - 120;
+            const scale = Math.min(maxWidth / (COLS * CELL), maxHeight / (ROWS * CELL));
             canvas.width = COLS * CELL;
             canvas.height = ROWS * CELL;
+            canvas.style.width = (COLS * CELL * scale) + 'px';
+            canvas.style.height = (ROWS * CELL * scale) + 'px';
+
             setupControls();
+            fetchLeaderboard();
         }
 
         function startGame() {
             document.getElementById('start-screen').classList.add('hidden');
             document.getElementById('gameover-screen').style.display = 'none';
             document.getElementById('game-container').classList.remove('hidden');
+            document.getElementById('name-input-container').style.display = 'none';
+            document.getElementById('retry-btn').classList.add('hidden');
 
             score = 0;
             powered = false;
@@ -178,64 +528,61 @@
         }
 
         function setupControls() {
+            // Keyboard
             document.addEventListener('keydown', e => {
                 if (!gameRunning) return;
                 switch(e.key) {
-                    case 'ArrowUp': player.nextDx = 0; player.nextDy = -1; break;
-                    case 'ArrowDown': player.nextDx = 0; player.nextDy = 1; break;
-                    case 'ArrowLeft': player.nextDx = -1; player.nextDy = 0; break;
-                    case 'ArrowRight': player.nextDx = 1; player.nextDy = 0; break;
+                    case 'ArrowUp': case 'w': case 'W':
+                        player.nextDx = 0; player.nextDy = -1; break;
+                    case 'ArrowDown': case 's': case 'S':
+                        player.nextDx = 0; player.nextDy = 1; break;
+                    case 'ArrowLeft': case 'a': case 'A':
+                        player.nextDx = -1; player.nextDy = 0; break;
+                    case 'ArrowRight': case 'd': case 'D':
+                        player.nextDx = 1; player.nextDy = 0; break;
                 }
                 e.preventDefault();
             });
 
-            let touchStartX, touchStartY;
-            document.addEventListener('touchstart', e => {
-                touchStartX = e.touches[0].clientX;
-                touchStartY = e.touches[0].clientY;
-            }, { passive: false });
-
-            document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
-
-            document.addEventListener('touchend', e => {
-                if (!gameRunning) return;
-                const dx = e.changedTouches[0].clientX - touchStartX;
-                const dy = e.changedTouches[0].clientY - touchStartY;
-                if (Math.abs(dx) > Math.abs(dy)) {
-                    player.nextDx = dx > 0 ? 1 : -1;
-                    player.nextDy = 0;
-                } else {
-                    player.nextDx = 0;
-                    player.nextDy = dy > 0 ? 1 : -1;
-                }
+            // Touch zones
+            document.querySelectorAll('.touch-zone').forEach(zone => {
+                zone.addEventListener('touchstart', e => {
+                    if (!gameRunning) return;
+                    e.preventDefault();
+                    const dir = zone.dataset.dir;
+                    switch(dir) {
+                        case 'up': player.nextDx = 0; player.nextDy = -1; break;
+                        case 'down': player.nextDx = 0; player.nextDy = 1; break;
+                        case 'left': player.nextDx = -1; player.nextDy = 0; break;
+                        case 'right': player.nextDx = 1; player.nextDy = 0; break;
+                    }
+                }, { passive: false });
             });
+
+            // Prevent scrolling
+            document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
         }
 
         function canMove(x, y) {
-            // Handle tunnel
             if (x < 0 || x >= COLS) return true;
             if (y < 0 || y >= ROWS) return false;
             return MAP[y][x] !== 1;
         }
 
         function movePlayer() {
-            // Try next direction
             if (canMove(player.x + player.nextDx, player.y + player.nextDy)) {
                 player.dx = player.nextDx;
                 player.dy = player.nextDy;
             }
 
-            // Move if possible
             if (canMove(player.x + player.dx, player.y + player.dy)) {
                 player.x += player.dx;
                 player.y += player.dy;
             }
 
-            // Tunnel wrap
             if (player.x < 0) player.x = COLS - 1;
             if (player.x >= COLS) player.x = 0;
 
-            // Eat dots
             const dotIdx = dots.findIndex(d => d.x === player.x && d.y === player.y);
             if (dotIdx !== -1) {
                 dots.splice(dotIdx, 1);
@@ -243,7 +590,6 @@
                 updateScore();
             }
 
-            // Eat power-up
             const puIdx = powerUps.findIndex(p => p.x === player.x && p.y === player.y);
             if (puIdx !== -1) {
                 powerUps.splice(puIdx, 1);
@@ -252,18 +598,21 @@
                 activatePower();
             }
 
-            // Win condition
             if (dots.length === 0 && powerUps.length === 0) {
                 gameRunning = false;
-                alert('You cleaned all the data! Score: ' + score);
-                startGame();
+                score += 500; // Bonus for completing
+                gameOver();
             }
         }
 
         function activatePower() {
             powered = true;
+            document.getElementById('powered-badge').style.display = 'inline';
             if (powerTimer) clearTimeout(powerTimer);
-            powerTimer = setTimeout(() => { powered = false; }, 5000);
+            powerTimer = setTimeout(() => {
+                powered = false;
+                document.getElementById('powered-badge').style.display = 'none';
+            }, 5000);
         }
 
         function moveEnemies() {
@@ -278,11 +627,10 @@
                 );
 
                 if (dirs.length > 0) {
-                    // Simple chase: prefer direction toward player
                     dirs.sort((a, b) => {
                         const distA = Math.abs(player.x - (enemy.x + a[0])) + Math.abs(player.y - (enemy.y + a[1]));
                         const distB = Math.abs(player.x - (enemy.x + b[0])) + Math.abs(player.y - (enemy.y + b[1]));
-                        return powered ? distB - distA : distA - distB; // Flee when powered
+                        return powered ? distB - distA : distA - distB;
                     });
                     const choice = Math.random() > 0.3 ? dirs[0] : dirs[Math.floor(Math.random() * dirs.length)];
                     enemy.dx = choice[0];
@@ -294,17 +642,15 @@
                     enemy.y += enemy.dy;
                 }
 
-                // Tunnel
                 if (enemy.x < 0) enemy.x = COLS - 1;
                 if (enemy.x >= COLS) enemy.x = 0;
             });
         }
 
         function checkCollision() {
-            enemies.forEach((enemy, idx) => {
+            enemies.forEach(enemy => {
                 if (enemy.x === player.x && enemy.y === player.y) {
                     if (powered) {
-                        // Eat enemy, respawn
                         enemy.x = 9;
                         enemy.y = 9;
                         score += 200;
@@ -318,9 +664,13 @@
 
         function gameOver() {
             gameRunning = false;
+            finalScore = score;
             document.getElementById('game-container').classList.add('hidden');
             document.getElementById('final-score').textContent = 'SKUs Cleaned: ' + score;
             document.getElementById('gameover-screen').style.display = 'flex';
+            document.getElementById('name-input-container').style.display = 'flex';
+            document.getElementById('player-name').value = '';
+            document.getElementById('player-name').focus();
         }
 
         function updateScore() {
@@ -331,8 +681,8 @@
             ctx.fillStyle = '#fff';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Grid lines
-            ctx.strokeStyle = '#e0e0e0';
+            // Grid
+            ctx.strokeStyle = '#f1f5f9';
             ctx.lineWidth = 1;
             for (let x = 0; x <= COLS; x++) {
                 ctx.beginPath();
@@ -348,7 +698,7 @@
             }
 
             // Walls
-            ctx.fillStyle = '#1a5e1a';
+            ctx.fillStyle = '#1e293b';
             for (let y = 0; y < ROWS; y++) {
                 for (let x = 0; x < COLS; x++) {
                     if (MAP[y][x] === 1) {
@@ -358,38 +708,41 @@
             }
 
             // Dots
-            ctx.fillStyle = '#999';
+            ctx.fillStyle = '#94a3b8';
             dots.forEach(d => {
                 ctx.beginPath();
-                ctx.arc(d.x * CELL + CELL/2, d.y * CELL + CELL/2, 3, 0, Math.PI * 2);
+                ctx.arc(d.x * CELL + CELL/2, d.y * CELL + CELL/2, 2, 0, Math.PI * 2);
                 ctx.fill();
             });
 
             // Power-ups
-            ctx.fillStyle = '#ffd700';
-            ctx.font = '14px Arial';
+            ctx.fillStyle = '#2563eb';
             powerUps.forEach(p => {
-                ctx.fillText('✓', p.x * CELL + 4, p.y * CELL + 15);
+                ctx.beginPath();
+                ctx.arc(p.x * CELL + CELL/2, p.y * CELL + CELL/2, 5, 0, Math.PI * 2);
+                ctx.fill();
             });
 
             // Player
-            ctx.fillStyle = powered ? '#00ffff' : '#0066cc';
+            ctx.fillStyle = powered ? '#10b981' : '#2563eb';
             ctx.beginPath();
             ctx.arc(player.x * CELL + CELL/2, player.y * CELL + CELL/2, CELL/2 - 2, 0, Math.PI * 2);
             ctx.fill();
 
             // Enemies
             enemies.forEach(e => {
-                ctx.fillStyle = powered ? '#aaa' : e.color;
+                ctx.fillStyle = powered ? '#cbd5e1' : e.color;
                 ctx.fillRect(e.x * CELL + 2, e.y * CELL + 2, CELL - 4, CELL - 4);
                 ctx.fillStyle = '#fff';
-                ctx.font = '10px Courier';
-                ctx.fillText(e.name, e.x * CELL + 2, e.y * CELL + 14);
+                ctx.font = 'bold 8px Inter, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(e.name, e.x * CELL + CELL/2, e.y * CELL + CELL/2 + 3);
             });
+            ctx.textAlign = 'left';
         }
 
         let lastTime = 0;
-        const TICK = 150;
+        const TICK = 140;
 
         function gameLoop(timestamp = 0) {
             if (!gameRunning) return;
