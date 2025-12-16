@@ -645,12 +645,12 @@
             if (powerTimer) clearTimeout(powerTimer);
 
             player = { x: 9, y: 15, dx: 0, dy: 0, nextDx: 0, nextDy: 0, munch: 0 };
-            // Spawn enemies inside the central ghost house (row 9, x=8-10) and corridor (row 7)
+            // Spawn enemies in the open corridors around the ghost house (not inside the T-trap)
             const spawnPositions = [
-                { x: 8, y: 9 },    // Ghost house left
-                { x: 10, y: 9 },   // Ghost house right
-                { x: 9, y: 7 },    // Top corridor center
-                { x: 9, y: 11 },   // Bottom corridor center
+                { x: 7, y: 7 },    // Top corridor left
+                { x: 11, y: 7 },   // Top corridor right
+                { x: 7, y: 11 },   // Bottom corridor left
+                { x: 11, y: 11 },  // Bottom corridor right
             ];
             enemies = ENEMIES.map((cfg, i) => ({
                 ...cfg,
