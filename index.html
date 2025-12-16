@@ -645,14 +645,12 @@
             if (powerTimer) clearTimeout(powerTimer);
 
             player = { x: 9, y: 15, dx: 0, dy: 0, nextDx: 0, nextDy: 0, munch: 0 };
-            // Spawn enemies in the corridor below ghost house, spread out
-            // Spawn enemies in the central corridor (rows 7-11 are the ghost house area)
-            // Place them spread out in the playable paths around row 13-17
+            // Spawn enemies inside the central ghost house (row 9, x=8-10) and corridor (row 7)
             const spawnPositions = [
-                { x: 1, y: 13 },   // Left side
-                { x: 17, y: 13 },  // Right side
-                { x: 9, y: 17 },   // Bottom center
-                { x: 5, y: 15 },   // Mid-left
+                { x: 8, y: 9 },    // Ghost house left
+                { x: 10, y: 9 },   // Ghost house right
+                { x: 9, y: 7 },    // Top corridor center
+                { x: 9, y: 11 },   // Bottom corridor center
             ];
             enemies = ENEMIES.map((cfg, i) => ({
                 ...cfg,
