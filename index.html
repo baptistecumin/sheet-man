@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sheet-Man</title>
+    <title>Rastro AI: Launch products faster.</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 656 656'%3E%3Crect width='656' height='656' rx='60' fill='white'/%3E%3Cpath d='M259.891 249.609C167.663 278.785 119.681 228.948 124.306 134.828C126.734 111.779 143.355 104.998 165.763 104.744C217.019 104.089 277.821 104.681 328.423 104.491C433.195 99.0821 526.274 144 528.323 250.962C529.217 297.629 511.822 341.869 482.741 376.813C465.487 397.77 468.908 417.503 481.559 438.989C494.821 463.179 517.018 493.791 528.274 518.446C540.418 543.206 528.401 549.903 500.904 551.594C473.047 552.988 438.18 552.946 409.859 551.678C387.916 550.896 370.007 543.164 363.101 521.594C353.492 496.199 346.079 464.615 327.684 442.749C313.851 424.348 281.982 408.545 266.121 430.538C241.602 462.946 298.898 527.065 265.657 546.227C242.806 555.481 182.785 555.143 162.257 544.495C137.484 530.467 144.981 488.678 143.566 463.812C144.284 430.622 141.919 396.714 149.311 364.073C180.863 215.933 379.574 374.447 415.329 268.729C418.729 246.715 398.729 229.771 378.581 225.652C337.356 216.462 299.574 238.666 259.976 249.588L259.891 249.609Z' fill='%230817EC'/%3E%3C/svg%3E">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -60,6 +60,7 @@
             50% { opacity: 1; }
         }
         #start-screen { cursor: pointer; }
+        #gameover-screen { cursor: pointer; }
         .btn {
             background: var(--blue);
             color: #fff;
@@ -135,11 +136,13 @@
             overflow: hidden;
         }
         .game-instruction {
-            color: #94a3b8;
-            font-size: 12px;
+            color: #60a5fa;
+            font-size: 16px;
+            font-weight: 600;
             text-align: center;
-            padding: 8px 16px 0;
+            padding: 12px 16px 4px;
             margin: 0;
+            text-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
         }
         .game-hud {
             display: flex;
@@ -163,6 +166,14 @@
             font-weight: 600;
             color: var(--slate-400);
             font-variant-numeric: tabular-nums;
+        }
+        .hud-skus {
+            font-size: 12px;
+            font-weight: 600;
+            color: #60a5fa;
+            background: rgba(59, 130, 246, 0.15);
+            padding: 4px 10px;
+            border-radius: 6px;
         }
         .hud-timer.warning { color: var(--yellow); }
         .hud-timer.critical { color: var(--red); }
@@ -248,14 +259,23 @@
         }
         #gameover-screen .logo { filter: drop-shadow(0 0 20px rgba(59, 130, 246, 0.5)); }
         .final-score { font-size: 56px; font-weight: 800; margin: 4px 0; text-shadow: 0 0 40px rgba(59, 130, 246, 0.6); }
-        .final-label { font-size: 14px; color: rgba(255,255,255,0.6); font-weight: 500; }
+        .end-message {
+            font-size: 24px;
+            font-weight: 700;
+            color: #60a5fa;
+            margin-bottom: 4px;
+            text-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+        }
+        .end-message.win { color: #22c55e; text-shadow: 0 0 20px rgba(34, 197, 94, 0.5); }
+        .end-message.lose { color: #f87171; text-shadow: 0 0 20px rgba(248, 113, 113, 0.5); }
         .bonus-breakdown {
             background: rgba(59, 130, 246, 0.1);
             border: 1px solid rgba(59, 130, 246, 0.2);
             border-radius: 12px;
-            padding: 16px 24px;
+            padding: 16px 32px;
             margin: 20px 0;
             font-size: 14px;
+            min-width: 280px;
         }
         .bonus-row {
             display: flex;
@@ -299,23 +319,51 @@
             margin-top: 32px;
             font-size: 13px;
             color: rgba(255,255,255,0.4);
+            text-align: center;
         }
         .cta-text a { color: #60a5fa; text-decoration: none; }
+
+        /* Countdown overlay */
+        .countdown-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+        .countdown-number {
+            font-size: 120px;
+            font-weight: 800;
+            color: #60a5fa;
+            text-shadow: 0 0 60px rgba(59, 130, 246, 0.8);
+            animation: countdown-pop 0.5s ease-out;
+        }
+        @keyframes countdown-pop {
+            0% { transform: scale(0.5); opacity: 0; }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); opacity: 1; }
+        }
     </style>
 </head>
 <body>
+    <div id="countdown-overlay" class="countdown-overlay hidden">
+        <span id="countdown-number" class="countdown-number">3</span>
+    </div>
     <div id="start-screen" class="screen">
         <svg class="logo" viewBox="0 0 656 656" fill="none">
             <rect width="656" height="656" rx="60" fill="#fff"/>
             <path d="M259.891 249.609C167.663 278.785 119.681 228.948 124.306 134.828C126.734 111.779 143.355 104.998 165.763 104.744C217.019 104.089 277.821 104.681 328.423 104.491C433.195 99.0821 526.274 144 528.323 250.962C529.217 297.629 511.822 341.869 482.741 376.813C465.487 397.77 468.908 417.503 481.559 438.989C494.821 463.179 517.018 493.791 528.274 518.446C540.418 543.206 528.401 549.903 500.904 551.594C473.047 552.988 438.18 552.946 409.859 551.678C387.916 550.896 370.007 543.164 363.101 521.594C353.492 496.199 346.079 464.615 327.684 442.749C313.851 424.348 281.982 408.545 266.121 430.538C241.602 462.946 298.898 527.065 265.657 546.227C242.806 555.481 182.785 555.143 162.257 544.495C137.484 530.467 144.981 488.678 143.566 463.812C144.284 430.622 141.919 396.714 149.311 364.073C180.863 215.933 379.574 374.447 415.329 268.729C418.729 246.715 398.729 229.771 378.581 225.652C337.356 216.462 299.574 238.666 259.976 249.588L259.891 249.609Z" fill="#2563eb"/>
         </svg>
         <h1 class="title">Launch Products Faster!</h1>
-        <p class="tagline">Eat the spreadsheets and clean your SKUs before time runs out.</p>
+        <p class="tagline">Clean your products before time runs out.</p>
         <p class="click-to-play">Click anywhere to play</p>
         <div class="card">
             <div class="card-title">Top Scores</div>
             <div id="leaderboard"></div>
         </div>
+        <p class="cta-text">Stop cleaning catalogs with spreadsheets. <a href="https://rastro.ai/demo">Try Rastro today</a></p>
     </div>
 
     <div id="gameover-screen" class="screen">
@@ -323,23 +371,32 @@
             <rect width="656" height="656" rx="60" fill="#fff"/>
             <path d="M259.891 249.609C167.663 278.785 119.681 228.948 124.306 134.828C126.734 111.779 143.355 104.998 165.763 104.744C217.019 104.089 277.821 104.681 328.423 104.491C433.195 99.0821 526.274 144 528.323 250.962C529.217 297.629 511.822 341.869 482.741 376.813C465.487 397.77 468.908 417.503 481.559 438.989C494.821 463.179 517.018 493.791 528.274 518.446C540.418 543.206 528.401 549.903 500.904 551.594C473.047 552.988 438.18 552.946 409.859 551.678C387.916 550.896 370.007 543.164 363.101 521.594C353.492 496.199 346.079 464.615 327.684 442.749C313.851 424.348 281.982 408.545 266.121 430.538C241.602 462.946 298.898 527.065 265.657 546.227C242.806 555.481 182.785 555.143 162.257 544.495C137.484 530.467 144.981 488.678 143.566 463.812C144.284 430.622 141.919 396.714 149.311 364.073C180.863 215.933 379.574 374.447 415.329 268.729C418.729 246.715 398.729 229.771 378.581 225.652C337.356 216.462 299.574 238.666 259.976 249.588L259.891 249.609Z" fill="#2563eb"/>
         </svg>
-        <p class="final-label">Final Score</p>
+        <p class="end-message" id="end-message">Game Over!</p>
         <p class="final-score" id="final-score">0</p>
         <div class="bonus-breakdown" id="breakdown"></div>
-        <input type="text" class="name-input" id="player-name" placeholder="Your name" maxlength="15">
-        <div class="btn-row">
-            <button class="btn-ghost" onclick="skipSubmit()">Skip</button>
-            <button class="btn-ghost btn-white" onclick="submitScore()">Save</button>
+        <div id="submit-section">
+            <input type="text" class="name-input" id="player-name" placeholder="Your name" maxlength="15">
+            <div class="btn-row">
+                <button class="btn-ghost" onclick="playAgain()">Play Again</button>
+                <button class="btn-ghost btn-white" onclick="submitScore()">Save</button>
+            </div>
         </div>
-        <button id="retry-btn" class="btn hidden" style="margin-top:16px;background:#fff;color:var(--blue)" onclick="startGame()">Play Again</button>
-        <p class="cta-text">Stop playing with spreadsheets. <a href="https://rastro.ai/demo">Try Rastro</a></p>
+        <div id="after-submit" class="hidden">
+            <div class="card" style="margin-top: 16px;">
+                <div class="card-title">Top Scores</div>
+                <div id="end-leaderboard"></div>
+            </div>
+            <p class="click-to-play" style="margin-top: 24px;">Click anywhere to play again</p>
+        </div>
+        <p class="cta-text">Stop cleaning catalogs with spreadsheets. <a href="https://rastro.ai/demo">Try Rastro today</a></p>
     </div>
 
     <div id="game-container" class="hidden">
-        <p class="game-instruction">Clean your products before time runs out.</p>
+        <p class="game-instruction">Clean your catalog before time runs out!</p>
         <div class="game-hud">
             <span class="hud-score" id="hud-score">0</span>
             <div class="hud-right">
+                <span class="hud-skus" id="hud-skus">SKUs: 0</span>
                 <span class="hud-timer" id="hud-timer">2:00</span>
                 <span class="power-pill" id="power-pill">DELETE FILES!</span>
             </div>
@@ -432,17 +489,27 @@
             } catch { renderLeaderboard([]); }
         }
 
-        function renderLeaderboard(data) {
-            const el = document.getElementById('leaderboard');
-            if (!data?.length) { el.innerHTML = '<div class="lb-row"><span style="color:var(--slate-400)">No scores yet</span></div>'; return; }
+        let lastLeaderboardData = [];
+
+        function renderLeaderboard(data, targetId = 'leaderboard') {
+            if (data) lastLeaderboardData = data;
+            const displayData = data || lastLeaderboardData;
+            const el = document.getElementById(targetId);
+            if (!el) return;
+            if (!displayData?.length) { el.innerHTML = '<div class="lb-row"><span style="color:var(--slate-400)">No scores yet</span></div>'; return; }
             const ranks = ['gold', 'silver', 'bronze'];
-            el.innerHTML = data.map((e, i) => `
+            el.innerHTML = displayData.map((e, i) => `
                 <div class="lb-row">
                     <div class="lb-rank ${ranks[i] || ''}">${i + 1}</div>
                     <span class="lb-name">${escapeHtml(e.name)}</span>
                     <span class="lb-score">${e.score.toLocaleString()}</span>
                 </div>
             `).join('');
+            // Also update end leaderboard if it exists
+            if (targetId === 'leaderboard') {
+                const endEl = document.getElementById('end-leaderboard');
+                if (endEl) endEl.innerHTML = el.innerHTML;
+            }
         }
 
         function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
@@ -476,17 +543,19 @@
             }
 
             saveScore(name, finalScore);
-            document.querySelector('.name-input').style.display = 'none';
-            document.querySelector('.btn-row').style.display = 'none';
-            document.querySelector('.bonus-breakdown').style.display = 'none';
-            document.getElementById('retry-btn').classList.remove('hidden');
+            showAfterSubmit();
         }
 
-        function skipSubmit() {
-            document.querySelector('.name-input').style.display = 'none';
-            document.querySelector('.btn-row').style.display = 'none';
-            document.querySelector('.bonus-breakdown').style.display = 'none';
-            document.getElementById('retry-btn').classList.remove('hidden');
+        function playAgain() {
+            startGame();
+        }
+
+        function showAfterSubmit() {
+            document.getElementById('submit-section').classList.add('hidden');
+            document.getElementById('after-submit').classList.remove('hidden');
+            // Update leaderboard on end screen
+            renderLeaderboard(null, 'end-leaderboard');
+            fetchLeaderboard();
         }
 
         function init() {
@@ -513,44 +582,112 @@
 
             // Click anywhere on start screen to play
             document.getElementById('start-screen').addEventListener('click', startGame);
+
+            // Click anywhere on game over screen to play again (after score submission)
+            document.getElementById('gameover-screen').addEventListener('click', (e) => {
+                // Only allow replay after skip/save (when after-submit is visible)
+                if (!document.getElementById('after-submit').classList.contains('hidden') &&
+                    !e.target.closest('.btn-ghost') && !e.target.closest('.name-input') && !e.target.closest('a')) {
+                    startGame();
+                }
+            });
         }
 
         function startGame() {
             document.getElementById('start-screen').classList.add('hidden');
             document.getElementById('gameover-screen').style.display = 'none';
             document.getElementById('game-container').classList.remove('hidden');
-            document.querySelector('.name-input').style.display = '';
-            document.querySelector('.btn-row').style.display = '';
-            document.querySelector('.bonus-breakdown').style.display = '';
-            document.getElementById('retry-btn').classList.add('hidden');
 
+            // Initialize game state so it's visible during countdown
+            initGameState();
+            draw();
+
+            // Show countdown
+            showCountdown(() => {
+                actuallyStartGame();
+            });
+        }
+
+        function initGameState() {
             score = 0; enemiesEaten = 0; powered = false; elapsedSeconds = 0;
-            startTime = Date.now();
             floatingMessages = [];
             inputQueue = [];
             deathFade = 0;
             if (powerTimer) clearTimeout(powerTimer);
 
             player = { x: 9, y: 15, dx: 0, dy: 0, nextDx: 0, nextDy: 0, munch: 0 };
+            // Spawn enemies in the corridor below ghost house, spread out
+            // Spawn enemies in the central corridor (rows 7-11 are the ghost house area)
+            // Place them spread out in the playable paths around row 13-17
+            const spawnPositions = [
+                { x: 1, y: 13 },   // Left side
+                { x: 17, y: 13 },  // Right side
+                { x: 9, y: 17 },   // Bottom center
+                { x: 5, y: 15 },   // Mid-left
+            ];
             enemies = ENEMIES.map((cfg, i) => ({
                 ...cfg,
-                x: 7 + i * 2,
-                y: 9,
-                dx: 0,
+                x: spawnPositions[i].x,
+                y: spawnPositions[i].y,
+                dx: i % 2 === 0 ? 1 : -1,
                 dy: 0,
-                mc: 0,
+                mc: i * 5,
                 scared: false,
                 eaten: false,
                 wobble: Math.random() * Math.PI * 2
             }));
 
             dots = []; powerUps = [];
+            const isGhostHouse = (x, y) => {
+                if (y === 9 && x >= 8 && x <= 10) return true;
+                if (y === 8 && x === 9) return true;
+                if (y === 7 && x >= 7 && x <= 12) return true;
+                if (y === 11 && x >= 7 && x <= 12) return true;
+                return false;
+            };
+
             for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
-                if (MAP[y][x] === 0) dots.push({ x, y });
+                if (MAP[y][x] === 0 && !isGhostHouse(x, y)) dots.push({ x, y });
                 if (MAP[y][x] === 2) powerUps.push({ x, y });
             }
 
             updateHUD();
+        }
+
+        function showCountdown(callback) {
+            const overlay = document.getElementById('countdown-overlay');
+            const numberEl = document.getElementById('countdown-number');
+            overlay.classList.remove('hidden');
+
+            let count = 3;
+            numberEl.textContent = count;
+            numberEl.style.animation = 'none';
+            numberEl.offsetHeight; // Trigger reflow
+            numberEl.style.animation = '';
+
+            const interval = setInterval(() => {
+                count--;
+                if (count > 0) {
+                    numberEl.textContent = count;
+                    numberEl.style.animation = 'none';
+                    numberEl.offsetHeight;
+                    numberEl.style.animation = '';
+                } else {
+                    numberEl.textContent = 'GO!';
+                    numberEl.style.animation = 'none';
+                    numberEl.offsetHeight;
+                    numberEl.style.animation = '';
+                    setTimeout(() => {
+                        overlay.classList.add('hidden');
+                        callback();
+                    }, 500);
+                    clearInterval(interval);
+                }
+            }, 700);
+        }
+
+        function actuallyStartGame() {
+            startTime = Date.now();
             gameRunning = true;
             if (animFrame) cancelAnimationFrame(animFrame);
             gameLoop();
@@ -666,40 +803,27 @@
             }, 6000);
         }
 
-        const SPAWN_X = 9, SPAWN_Y = 7; // Just outside ghost house
+        const SPAWN_X = 9, SPAWN_Y = 11; // Below ghost house where there's open corridor
 
-        // Move eaten enemies back to base (called every game tick)
+        // Move eaten enemies back to base - simple timer-based respawn
         function moveEatenEnemies() {
             enemies.forEach(e => {
                 if (!e.eaten) return;
 
-                // Check if reached spawn
-                if (Math.abs(e.x - SPAWN_X) <= 1 && Math.abs(e.y - SPAWN_Y) <= 1) {
+                // Increment return counter
+                e.returnTimer = (e.returnTimer || 0) + 1;
+
+                // After 20 ticks (~1 sec), respawn below ghost house
+                if (e.returnTimer >= 20) {
                     e.x = SPAWN_X;
                     e.y = SPAWN_Y;
                     e.eaten = false;
                     e.scared = powered;
-                    e.dx = 0;
-                    e.dy = 1;
+                    // Random horizontal direction to spread out
+                    e.dx = Math.random() > 0.5 ? 1 : -1;
+                    e.dy = 0;
                     e.mc = 0;
-                    return;
-                }
-
-                // Move towards spawn
-                const dx = e.x < SPAWN_X ? 1 : e.x > SPAWN_X ? -1 : 0;
-                const dy = e.y < SPAWN_Y ? 1 : e.y > SPAWN_Y ? -1 : 0;
-
-                // Try horizontal first, then vertical
-                if (dx !== 0 && canMove(e.x + dx, e.y)) {
-                    e.x += dx;
-                } else if (dy !== 0 && canMove(e.x, e.y + dy)) {
-                    e.y += dy;
-                } else if (dx !== 0) {
-                    if (canMove(e.x, e.y - 1)) e.y -= 1;
-                    else if (canMove(e.x, e.y + 1)) e.y += 1;
-                } else if (dy !== 0) {
-                    if (canMove(e.x - 1, e.y)) e.x -= 1;
-                    else if (canMove(e.x + 1, e.y)) e.x += 1;
+                    e.returnTimer = 0;
                 }
             });
         }
@@ -721,7 +845,8 @@
                         const dB = Math.abs(player.x-(e.x+b[0])) + Math.abs(player.y-(e.y+b[1]));
                         return e.scared ? dB - dA : dA - dB; // Flee when scared
                     });
-                    const c = Math.random() > 0.3 ? dirs[0] : dirs[Math.floor(Math.random()*dirs.length)];
+                    // 50% chance to track player (easier), 50% random movement
+                    const c = Math.random() > 0.5 ? dirs[0] : dirs[Math.floor(Math.random()*dirs.length)];
                     e.dx = c[0]; e.dy = c[1];
                 }
 
@@ -799,47 +924,56 @@
 
         function gameOver() {
             gameRunning = false;
-            deathFade = 0.01; // Start fade
+            deathFade = 0.05; // Start fade (faster)
             animFrame = requestAnimationFrame(gameLoop);
         }
 
-        function showGameOver() {
+        function showEndScreen(won) {
             baseScore = score;
             const timeLeft = Math.max(0, MAX_TIME - elapsedSeconds);
-            timeBonus = Math.floor(timeLeft * 10);
+            // Only give time bonus if level is beaten (won)
+            timeBonus = won ? Math.floor(timeLeft * 10) : 0;
             finalScore = baseScore + timeBonus;
 
             document.getElementById('game-container').classList.add('hidden');
+
+            // Set message based on win/lose
+            const msgEl = document.getElementById('end-message');
+            msgEl.className = 'end-message ' + (won ? 'win' : 'lose');
+            msgEl.textContent = won ? 'Catalog Cleaned!' : 'The spreadsheets got you!';
+
             document.getElementById('final-score').textContent = finalScore.toLocaleString();
-            document.getElementById('breakdown').innerHTML = `
-                <div class="bonus-row"><span>SKUs cleaned</span><span>${baseScore.toLocaleString()}</span></div>
-                <div class="bonus-row"><span>Spreadsheets destroyed</span><span>${enemiesEaten}</span></div>
-                <div class="bonus-row"><span>Time saved bonus</span><span>+${timeBonus.toLocaleString()}</span></div>
+
+            let breakdownHTML = `
+                <div class="bonus-row"><span>Products cleaned</span><span>${baseScore.toLocaleString()}</span></div>
+                <div class="bonus-row"><span>Spreadsheets deleted</span><span>${enemiesEaten}</span></div>
             `;
-            document.getElementById('gameover-screen').style.display = 'flex';
+            if (won) {
+                breakdownHTML += `<div class="bonus-row"><span>Time saved bonus</span><span>+${timeBonus.toLocaleString()}</span></div>`;
+            }
+            document.getElementById('breakdown').innerHTML = breakdownHTML;
+
+            // Reset submit section state
+            document.getElementById('submit-section').classList.remove('hidden');
+            document.getElementById('after-submit').classList.add('hidden');
             document.getElementById('player-name').value = '';
+            document.getElementById('player-name').style.borderColor = '';
+
+            document.getElementById('gameover-screen').style.display = 'flex';
+        }
+
+        function showGameOver() {
+            showEndScreen(false);
         }
 
         function calculateFinalScore(won) {
-            // For win, show immediately
-            baseScore = score;
-            const timeLeft = Math.max(0, MAX_TIME - elapsedSeconds);
-            timeBonus = Math.floor(timeLeft * 10);
-            finalScore = baseScore + timeBonus;
-
-            document.getElementById('game-container').classList.add('hidden');
-            document.getElementById('final-score').textContent = finalScore.toLocaleString();
-            document.getElementById('breakdown').innerHTML = `
-                <div class="bonus-row"><span>SKUs cleaned</span><span>${baseScore.toLocaleString()}</span></div>
-                <div class="bonus-row"><span>Spreadsheets destroyed</span><span>${enemiesEaten}</span></div>
-                <div class="bonus-row"><span>Time saved bonus</span><span>+${timeBonus.toLocaleString()}</span></div>
-            `;
-            document.getElementById('gameover-screen').style.display = 'flex';
-            document.getElementById('player-name').value = '';
+            showEndScreen(won);
         }
 
         function updateHUD() {
             document.getElementById('hud-score').textContent = score.toLocaleString();
+            const skusLeft = dots.length + powerUps.length;
+            document.getElementById('hud-skus').textContent = `SKUs: ${skusLeft}`;
         }
 
         function updateTimer() {
@@ -1057,9 +1191,9 @@
 
         function gameLoop(ts = 0) {
             if (!gameRunning) {
-                // Death fade animation
+                // Death fade animation (faster)
                 if (deathFade > 0 && deathFade < 1) {
-                    deathFade += 0.02;
+                    deathFade += 0.06;
                     draw();
                     // Draw fade overlay
                     ctx.fillStyle = `rgba(15, 23, 42, ${deathFade})`;
@@ -1081,16 +1215,14 @@
                 lastEatenTime = ts;
             }
 
-            // Game tick - 130ms for slower, more deliberate pace
-            if (ts - lastTime >= 130) {
+            // Game tick - 145ms for slower, more deliberate pace (10% slower)
+            if (ts - lastTime >= 145) {
                 savePositions(); // Save positions before movement
                 movePlayer();
                 moveEnemies();
                 checkCollision();
                 lastTime = ts;
             }
-            // Also check collision every frame for better detection
-            checkCollision();
             draw();
             animFrame = requestAnimationFrame(gameLoop);
         }
