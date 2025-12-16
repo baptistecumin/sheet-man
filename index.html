@@ -463,9 +463,9 @@
             [1,0,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,0,1],
             [1,1,1,1,0,1,1,1,0,1,0,1,1,1,0,1,1,1,1],
             [1,1,1,1,0,1,0,0,0,0,0,0,0,1,0,1,1,1,1],
-            [1,1,1,1,0,1,0,0,0,0,0,0,0,1,0,1,1,1,1],
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-            [1,1,1,1,0,1,0,0,0,0,0,0,0,1,0,1,1,1,1],
+            [1,1,1,1,0,1,0,1,1,0,1,1,0,1,0,1,1,1,1],
+            [0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0],
+            [1,1,1,1,0,1,0,1,1,1,1,1,0,1,0,1,1,1,1],
             [1,1,1,1,0,1,0,0,0,0,0,0,0,1,0,1,1,1,1],
             [1,1,1,1,0,1,0,1,1,1,1,1,0,1,0,1,1,1,1],
             [1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1],
@@ -645,12 +645,12 @@
             if (powerTimer) clearTimeout(powerTimer);
 
             player = { x: 9, y: 15, dx: 0, dy: 0, nextDx: 0, nextDy: 0, munch: 0 };
-            // Spawn enemies inside the central ghost house area (now open, no T-trap)
+            // Spawn enemies inside the ghost house (row 9, x=8-10)
             const spawnPositions = [
-                { x: 8, y: 8 },    // Ghost house top-left
-                { x: 10, y: 8 },   // Ghost house top-right
-                { x: 8, y: 10 },   // Ghost house bottom-left
-                { x: 10, y: 10 },  // Ghost house bottom-right
+                { x: 8, y: 9 },    // Ghost house left
+                { x: 9, y: 9 },    // Ghost house center
+                { x: 10, y: 9 },   // Ghost house right
+                { x: 9, y: 9 },    // Ghost house center (2nd)
             ];
             enemies = ENEMIES.map((cfg, i) => ({
                 ...cfg,
@@ -666,8 +666,9 @@
 
             dots = []; powerUps = [];
             const isGhostHouse = (x, y) => {
-                // Central ghost house area: rows 7-11, columns 7-12
-                if (y >= 7 && y <= 11 && x >= 7 && x <= 12) return true;
+                // Ghost house interior (row 9, x=8-10) and exit corridor (row 8, x=9)
+                if (y === 9 && x >= 8 && x <= 10) return true;
+                if (y === 8 && x === 9) return true;
                 return false;
             };
 
@@ -927,6 +928,15 @@
             });
         }
 
+        // Check if position is inside ghost house
+        function isInGhostHouse(x, y) {
+            // Ghost house interior: row 9, x=8-10
+            // Exit path: row 8, x=9
+            if (y === 9 && x >= 8 && x <= 10) return true;
+            if (y === 8 && x === 9) return true;
+            return false;
+        }
+
         function moveEnemies() {
             enemies.forEach(e => {
                 if (e.eaten) return; // Handled by moveEatenEnemies
@@ -934,6 +944,30 @@
                 if (++e.mc < 4 - e.speed) return;
                 e.mc = 0;
 
+                // Ghost house exit logic - force enemies to leave
+                if (isInGhostHouse(e.x, e.y)) {
+                    // Priority: get to x=9, then move up to exit
+                    if (e.y === 9) {
+                        // In the ghost house interior
+                        if (e.x < 9) {
+                            e.dx = 1; e.dy = 0; // Move right towards exit
+                        } else if (e.x > 9) {
+                            e.dx = -1; e.dy = 0; // Move left towards exit
+                        } else {
+                            e.dx = 0; e.dy = -1; // At x=9, move up
+                        }
+                    } else if (e.y === 8 && e.x === 9) {
+                        // In exit corridor, keep moving up
+                        e.dx = 0; e.dy = -1;
+                    }
+
+                    if (canMove(e.x + e.dx, e.y + e.dy)) {
+                        e.x += e.dx; e.y += e.dy;
+                    }
+                    return; // Skip normal AI while exiting
+                }
+
+                // Normal movement AI (outside ghost house)
                 const dirs = [[0,-1],[0,1],[-1,0],[1,0]].filter(d =>
                     canMove(e.x+d[0], e.y+d[1]) && !(d[0]===-e.dx && d[1]===-e.dy)
                 );
