@@ -463,9 +463,9 @@
             [1,0,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,0,1],
             [1,1,1,1,0,1,1,1,0,1,0,1,1,1,0,1,1,1,1],
             [1,1,1,1,0,1,0,0,0,0,0,0,0,1,0,1,1,1,1],
-            [1,1,1,1,0,1,0,1,1,0,1,1,0,1,0,1,1,1,1],
-            [0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0],
-            [1,1,1,1,0,1,0,1,1,1,1,1,0,1,0,1,1,1,1],
+            [1,1,1,1,0,1,0,0,0,0,0,0,0,1,0,1,1,1,1],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            [1,1,1,1,0,1,0,0,0,0,0,0,0,1,0,1,1,1,1],
             [1,1,1,1,0,1,0,0,0,0,0,0,0,1,0,1,1,1,1],
             [1,1,1,1,0,1,0,1,1,1,1,1,0,1,0,1,1,1,1],
             [1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1],
@@ -645,12 +645,12 @@
             if (powerTimer) clearTimeout(powerTimer);
 
             player = { x: 9, y: 15, dx: 0, dy: 0, nextDx: 0, nextDy: 0, munch: 0 };
-            // Spawn enemies in the open corridors around the ghost house (not inside the T-trap)
+            // Spawn enemies inside the central ghost house area (now open, no T-trap)
             const spawnPositions = [
-                { x: 7, y: 7 },    // Top corridor left
-                { x: 11, y: 7 },   // Top corridor right
-                { x: 7, y: 11 },   // Bottom corridor left
-                { x: 11, y: 11 },  // Bottom corridor right
+                { x: 8, y: 8 },    // Ghost house top-left
+                { x: 10, y: 8 },   // Ghost house top-right
+                { x: 8, y: 10 },   // Ghost house bottom-left
+                { x: 10, y: 10 },  // Ghost house bottom-right
             ];
             enemies = ENEMIES.map((cfg, i) => ({
                 ...cfg,
@@ -666,10 +666,8 @@
 
             dots = []; powerUps = [];
             const isGhostHouse = (x, y) => {
-                if (y === 9 && x >= 8 && x <= 10) return true;
-                if (y === 8 && x === 9) return true;
-                if (y === 7 && x >= 7 && x <= 12) return true;
-                if (y === 11 && x >= 7 && x <= 12) return true;
+                // Central ghost house area: rows 7-11, columns 7-12
+                if (y >= 7 && y <= 11 && x >= 7 && x <= 12) return true;
                 return false;
             };
 
@@ -904,7 +902,7 @@
             }, 6000);
         }
 
-        const SPAWN_X = 9, SPAWN_Y = 11; // Below ghost house where there's open corridor
+        const SPAWN_X = 9, SPAWN_Y = 9; // Center of ghost house
 
         // Move eaten enemies back to base - simple timer-based respawn
         function moveEatenEnemies() {
