@@ -218,38 +218,63 @@
         .tz-left { grid-area: 2 / 1; }
         .tz-right { grid-area: 2 / 3; }
 
-        /* Mobile arrow keys */
+        /* Mobile joystick */
         .mobile-controls {
             display: none;
-            margin-top: 12px;
+            margin-top: 16px;
+            padding-bottom: 20px;
         }
         @media (max-width: 768px) {
-            .mobile-controls { display: block; }
+            .mobile-controls { display: flex; justify-content: center; }
         }
-        .arrow-pad {
-            display: grid;
-            grid-template: repeat(3, 44px) / repeat(3, 44px);
-            gap: 4px;
-            justify-content: center;
+        .joystick-container {
+            position: relative;
+            width: 120px;
+            height: 120px;
         }
-        .arrow-btn {
-            background: rgba(59, 130, 246, 0.2);
-            border: 1px solid rgba(59, 130, 246, 0.3);
-            border-radius: 8px;
-            color: #60a5fa;
-            font-size: 20px;
+        .joystick-base {
+            position: absolute;
+            width: 120px;
+            height: 120px;
+            background: rgba(59, 130, 246, 0.15);
+            border: 2px solid rgba(59, 130, 246, 0.3);
+            border-radius: 50%;
+            box-shadow: inset 0 0 20px rgba(59, 130, 246, 0.1);
+        }
+        .joystick-stick {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background: radial-gradient(circle at 30% 30%, #60a5fa, #2563eb);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.5);
+            transition: box-shadow 0.1s;
+        }
+        .joystick-stick.active {
+            box-shadow: 0 4px 25px rgba(37, 99, 235, 0.8);
+        }
+        .joystick-direction {
+            position: absolute;
+            width: 100%;
+            height: 100%;
             display: flex;
             align-items: center;
             justify-content: center;
-            cursor: pointer;
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
+            pointer-events: none;
         }
-        .arrow-btn:active { background: rgba(59, 130, 246, 0.4); }
-        .arrow-up { grid-area: 1 / 2; }
-        .arrow-down { grid-area: 3 / 2; }
-        .arrow-left { grid-area: 2 / 1; }
-        .arrow-right { grid-area: 2 / 3; }
+        .joystick-arrow {
+            position: absolute;
+            color: rgba(96, 165, 250, 0.4);
+            font-size: 14px;
+        }
+        .joystick-arrow.up { top: 8px; }
+        .joystick-arrow.down { bottom: 8px; }
+        .joystick-arrow.left { left: 8px; }
+        .joystick-arrow.right { right: 8px; }
 
         /* Game Over */
         #gameover-screen {
@@ -411,11 +436,15 @@
             </div>
         </div>
         <div class="mobile-controls">
-            <div class="arrow-pad">
-                <div class="arrow-btn arrow-up" data-dir="up">▲</div>
-                <div class="arrow-btn arrow-left" data-dir="left">◀</div>
-                <div class="arrow-btn arrow-right" data-dir="right">▶</div>
-                <div class="arrow-btn arrow-down" data-dir="down">▼</div>
+            <div class="joystick-container" id="joystick">
+                <div class="joystick-base"></div>
+                <div class="joystick-direction">
+                    <span class="joystick-arrow up">▲</span>
+                    <span class="joystick-arrow down">▼</span>
+                    <span class="joystick-arrow left">◀</span>
+                    <span class="joystick-arrow right">▶</span>
+                </div>
+                <div class="joystick-stick" id="joystick-stick"></div>
             </div>
         </div>
     </div>
@@ -718,19 +747,93 @@
                 }, { passive: false });
             });
 
-            // Arrow button controls for mobile
-            document.querySelectorAll('.arrow-btn').forEach(btn => {
-                const handler = e => {
-                    if (!gameRunning) return;
-                    e.preventDefault();
-                    const dirs = { up: [0,-1], down: [0,1], left: [-1,0], right: [1,0] };
-                    [player.nextDx, player.nextDy] = dirs[btn.dataset.dir];
-                    inputQueue.push({ dx: dirs[btn.dataset.dir][0], dy: dirs[btn.dataset.dir][1], time: Date.now() });
-                    if (inputQueue.length > 3) inputQueue.shift();
-                };
-                btn.addEventListener('touchstart', handler, { passive: false });
-                btn.addEventListener('mousedown', handler);
+            // Joystick controls for mobile
+            const joystick = document.getElementById('joystick');
+            const stick = document.getElementById('joystick-stick');
+            let joystickActive = false;
+            let joystickCenter = { x: 0, y: 0 };
+            const maxDistance = 35; // Max distance stick can move from center
+
+            function getJoystickDirection(dx, dy) {
+                const threshold = 15; // Minimum distance to register direction
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                if (distance < threshold) return null;
+
+                // Determine primary direction based on angle
+                const angle = Math.atan2(dy, dx);
+                if (angle > -Math.PI/4 && angle <= Math.PI/4) return [1, 0];  // Right
+                if (angle > Math.PI/4 && angle <= 3*Math.PI/4) return [0, 1]; // Down
+                if (angle > -3*Math.PI/4 && angle <= -Math.PI/4) return [0, -1]; // Up
+                return [-1, 0]; // Left
+            }
+
+            function handleJoystickMove(clientX, clientY) {
+                if (!joystickActive) return;
+
+                const rect = joystick.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+
+                let dx = clientX - centerX;
+                let dy = clientY - centerY;
+
+                // Limit to max distance
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                if (distance > maxDistance) {
+                    dx = (dx / distance) * maxDistance;
+                    dy = (dy / distance) * maxDistance;
+                }
+
+                // Move the stick visually
+                stick.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+
+                // Get direction and apply to player
+                if (gameRunning) {
+                    const dir = getJoystickDirection(dx, dy);
+                    if (dir) {
+                        player.nextDx = dir[0];
+                        player.nextDy = dir[1];
+                        inputQueue.push({ dx: dir[0], dy: dir[1], time: Date.now() });
+                        if (inputQueue.length > 3) inputQueue.shift();
+                    }
+                }
+            }
+
+            function resetJoystick() {
+                joystickActive = false;
+                stick.style.transform = 'translate(-50%, -50%)';
+                stick.classList.remove('active');
+            }
+
+            joystick.addEventListener('touchstart', e => {
+                e.preventDefault();
+                joystickActive = true;
+                stick.classList.add('active');
+                const touch = e.touches[0];
+                handleJoystickMove(touch.clientX, touch.clientY);
+            }, { passive: false });
+
+            joystick.addEventListener('touchmove', e => {
+                e.preventDefault();
+                const touch = e.touches[0];
+                handleJoystickMove(touch.clientX, touch.clientY);
+            }, { passive: false });
+
+            joystick.addEventListener('touchend', resetJoystick);
+            joystick.addEventListener('touchcancel', resetJoystick);
+
+            // Mouse support for testing on desktop
+            joystick.addEventListener('mousedown', e => {
+                joystickActive = true;
+                stick.classList.add('active');
+                handleJoystickMove(e.clientX, e.clientY);
             });
+
+            document.addEventListener('mousemove', e => {
+                if (joystickActive) handleJoystickMove(e.clientX, e.clientY);
+            });
+
+            document.addEventListener('mouseup', resetJoystick);
 
             document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
         }
